@@ -1,0 +1,78 @@
+% Report Template 02612 Constrained Optimization
+
+\documentclass[a4paper,10pt]{memoir}
+
+% Include all settings
+\input{preamble/setup}
+
+% Define data
+\def\ThYear{2023}
+\def\ThTitleEN{02671 Model Predictive Control}
+\def\ThSubtitleEN{Exam Report}
+
+\def\ThAuthors{Jens Jensen (sXXYYZZ)}
+
+\def\ThSupervisors{
+    John Bagterp Jørgensen, Professor, DTU Compute, DTU
+}
+
+\def\ThDepartment{ \textbf{DTU Compute - Department of Applied Mathematics and Computer Science}\\ Section for Scientific Computing \\ Technical University of Denmark\\ Matematiktorvet, Building 303B\\ 2800 Kgs. Lyngby\\ Denmark}
+
+\def\ThElektroEmail{@2-control.dk}
+\def\ThBeginDate{March 28, 2023}
+\def\ThEndDate{May 22, 2023}
+\def\ThProjectPeriod{\ThBeginDate - \ThEndDate}
+\def\ThECTS{5}
+\def\ThEducation{02612 Constrained Optimization}
+\def\ThField{Scientific Computing, Simulation, Estimation}
+\def\ThClass{None} %{Confidential until October 1st, 2016}
+\def\ThRemarks{None}
+\def\ThCopyrights{None, \ThYear}
+
+\begin{document}
+
+\input{preamble/titlePage}
+
+\frontmatter
+
+\tableofcontents*
+
+%\cleardoublepage
+%\listoffigures
+%\cleardoublepage
+
+\input{tex/preface}
+%\listoftables
+
+\input{tex/abstract}
+\printnomenclature
+
+
+\mainmatter
+
+\input{tex/chapters/Problem1}
+\input{tex/chapters/Problem2}
+\input{tex/chapters/Problem3}
+\input{tex/chapters/Problem4}
+\input{tex/chapters/Problem5}
+\input{tex/chapters/Problem6}
+\input{tex/chapters/Problem7}
+\input{tex/chapters/Problem8}
+\input{tex/chapters/Problem9}
+\input{tex/chapters/Problem10}
+\input{tex/chapters/Problem11}
+\input{tex/chapters/Problem12}
+\input{tex/chapters/Problem13}
+\input{tex/chapters/Problem14}
+
+\appendix
+\appendixpage
+\input{tex/Appendix/AppendixA/AppendixA}
+
+\backmatter
+
+\bibliography{ref/mybib}
+\bibliographystyle{kluwer}
+
+
+\end{document}

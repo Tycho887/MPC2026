@@ -1,0 +1,306 @@
+% Chapter fragment: load amsmath and graphicx in the main report.
+% Derivation follows ../MPC/transferFunction4TankSystem.md and the
+% implementation in ../MPC/four-tank-model/problem3*.m, checked against common/.
+\chapter{PID Control}
+\label{chap:problem3}
+
+\section{Linear Model and Input--Output Pairing}
+
+The purpose of feedback is to regulate the two lower-tank levels using
+pump flows $F_1$ and $F_2$. The nonlinear mass balances from
+Chapter~\ref{chap:problem2} are linearized about a positive equilibrium
+$(x_s,u_s,d_s)$ satisfying $f(x_s,u_s,d_s,p)=0$. Disturbances are held at
+their nominal values during controller design. These values need not be
+zero: the experiments below use different operating points.
+
+The equilibrium flows, levels, and masses satisfy
+\begin{align}
+ q_{3,s}&=(1-\gamma_2)F_{2,s}+F_{3,s},&
+ q_{4,s}&=(1-\gamma_1)F_{1,s}+F_{4,s},\\
+ q_{1,s}&=\gamma_1F_{1,s}+q_{3,s},&
+ q_{2,s}&=\gamma_2F_{2,s}+q_{4,s},\\
+ h_{i,s}&=\frac{(q_{i,s}/a_i)^2}{2g},&
+ m_{i,s}&=\rho A_i h_{i,s}.
+\end{align}
+The tangent-line approximation of each outlet flow is
+\begin{equation}
+ q_i(m_i)\simeq q_{i,s}+k_i\delta m_i,\qquad
+ k_i=\left.\frac{dq_i}{dm_i}\right|_{m_{i,s}}
+     =\frac{q_{i,s}}{2m_{i,s}},\qquad
+ T_i=\frac{1}{\rho k_i}=\frac{2A_i h_{i,s}}{q_{i,s}}.
+\end{equation}
+With $\delta x=x-x_s$, $\delta u=u-u_s$, and $\delta d=d-d_s$,
+\begin{equation}
+ \delta\dot x=A\delta x+B\delta u+E\delta d,\qquad
+ \delta z=C_h\delta x,
+\end{equation}
+where
+\begin{equation}
+ A=\begin{bmatrix}
+ -1/T_1&0&1/T_3&0\\0&-1/T_2&0&1/T_4\\
+ 0&0&-1/T_3&0\\0&0&0&-1/T_4
+ \end{bmatrix},\quad B=\rho U,\quad E=\rho D,
+ \quad C_h=\begin{bmatrix}(\rho A_1)^{-1}&0&0&0\\
+ 0&(\rho A_2)^{-1}&0&0\end{bmatrix}.
+\end{equation}
+The routing matrices $U,D$ are those of Chapter~\ref{chap:problem2}.
+All plant poles are negative at a positive equilibrium, but the
+linear approximation remains local because discharge gains vary with level.
+
+For zero initial deviations and $\delta d=0$, the upper-tank equations give
+\begin{equation}
+ \delta m_3(s)=\frac{\rho(1-\gamma_2)T_3}{1+sT_3}\delta F_2(s),\qquad
+ \delta m_4(s)=\frac{\rho(1-\gamma_1)T_4}{1+sT_4}\delta F_1(s).
+\end{equation}
+Substituting into the lower-tank equations yields
+\begin{equation}
+ G_m(s)=\begin{bmatrix}
+ \dfrac{\rho\gamma_1T_1}{1+sT_1}&
+ \dfrac{\rho(1-\gamma_2)T_1}{(1+sT_1)(1+sT_3)}\\[6pt]
+ \dfrac{\rho(1-\gamma_1)T_2}{(1+sT_2)(1+sT_4)}&
+ \dfrac{\rho\gamma_2T_2}{1+sT_2}
+ \end{bmatrix},\qquad
+ G_h(s)=\operatorname{diag}\left(\frac{1}{\rho A_1},
+ \frac{1}{\rho A_2}\right)G_m(s).
+ \label{eq:p3-transfer}
+\end{equation}
+The direct paths $F_1\to h_1$ and $F_2\to h_2$ have one tank lag;
+the cross paths have two lags. This supports pairing pump 1 with tank 1
+and pump 2 with tank 2, although the loops interact.
+
+A quantitative check uses the relative gain array (RGA), with
+$\circ$ denoting elementwise multiplication:
+\begin{equation}
+ \Lambda=G_h(0)\circ\bigl(G_h(0)^{-1}\bigr)^T
+ =\frac{1}{\gamma_1+\gamma_2-1}
+ \begin{bmatrix}
+ \gamma_1\gamma_2&-(1-\gamma_1)(1-\gamma_2)\\
+ -(1-\gamma_1)(1-\gamma_2)&\gamma_1\gamma_2
+ \end{bmatrix}
+ =\begin{bmatrix}1.4&-0.4\\-0.4&1.4\end{bmatrix}.
+\end{equation}
+The positive diagonal relative gains favour the direct pairing; negative
+cross gains make the alternative pairing unattractive. The diagonal value
+1.4 also indicates appreciable steady-state interaction.
+
+\section{Static Decoupling and Controller Equations}
+
+Let $G$ denote either $G_m$ for mass feedback or $G_h$ for level feedback.
+The static decoupler and effective plant are
+\begin{equation}
+ W=G(0)^{-1},\qquad G_{\mathrm{eff}}(s)=G(s)W,\qquad
+ G_{\mathrm{eff}}(0)=I_2.
+ \label{eq:p3-decoupler}
+\end{equation}
+The inverse exists because $\gamma_1+\gamma_2-1=0.3\ne0$.
+Numerically, the implementation solves $G(0)W=I_2$ using MATLAB's
+backslash operator. Static decoupling removes interaction at zero
+frequency; $G_{\mathrm{eff}}(s)$ generally retains off-diagonal dynamics.
+It therefore does not produce two fully independent SISO plants.
+
+For error $e=r-y$ and virtual control $v$, the control law is
+\begin{equation}
+ v(s)=C_{\mathrm{diag}}(s)e(s),\qquad
+ u=u_s+Wv,\qquad C_{\mathrm{diag}}=\operatorname{diag}(C_1,C_2).
+\end{equation}
+The standard controller structures are
+\begin{equation}
+ C_i^{\mathrm P}(s)=K_{p,i},\qquad
+ C_i^{\mathrm{PI}}(s)=K_{p,i}+\frac{K_{i,i}}{s},\qquad
+ C_i^{\mathrm{PID}}(s)=K_{p,i}+\frac{K_{i,i}}{s}
+                       +\frac{K_{d,i}s}{1+T_{f,i}s}.
+\end{equation}
+The derivative filter $T_{f,i}>0$ limits high-frequency noise amplification.
+For an ideal unit-static-gain effective plant, P control leaves the
+constant-reference error $e_{i,\infty}=r_i/(1+K_{p,i})$ in deviation
+coordinates. Integral action can remove constant offsets when the closed
+loop is stable and the requested equilibrium is feasible. Derivative
+feedback may improve transients, but its noise sensitivity must be evaluated.
+
+The implemented experiments use PI controllers tuned independently on
+$G_{\mathrm{eff},11}$ and $G_{\mathrm{eff},22}$ with MATLAB's
+\texttt{pidtune} and \texttt{DesignFocus='reference-tracking'}.
+The complete multivariable linear closed loop is checked using
+\begin{equation}
+ K=WC_{\mathrm{diag}},\qquad L=GK,\qquad
+ T_{\mathrm{cl}}=(I_2+L)^{-1}L.
+\end{equation}
+Its poles are stable for the three designs reported here, and its static
+reference gain is $I_2$ to numerical precision. Tuning the diagonal channels
+alone does not guarantee stability of the interacting multivariable loop.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Operating points and PI gains. Flows are in $\mathrm{cm^3/s}$.
+ Gains act on virtual channels normalized to unit static gain; $K_p$ is
+ dimensionless and $K_i$ is in $\mathrm{s^{-1}}$.}
+ \label{tab:p3-gains}
+ \begin{tabular}{lrrrrrr}
+ \hline
+ Experiment & $u_s^T$ & $d_s^T$ & $K_{p,1}$ & $K_{i,1}$ & $K_{p,2}$ & $K_{i,2}$\\
+ \hline
+ Analysis & $(100,300)$ & $(100,100)$ & 1.05838 & 0.068357 & 1.03345 & 0.052202\\
+ Level control & $(300,300)$ & $(100,100)$ & 0.99280 & 0.046257 & 0.99597 & 0.039951\\
+ Comparison & $(300,300)$ & $(0,0)$ & 0.98203 & 0.063979 & 1.00857 & 0.054040\\
+ \hline
+ \end{tabular}
+\end{table}
+The analysis and comparison use mass-coordinate decouplers; the level
+experiment uses a level-coordinate decoupler. These matrices have different
+units and must be used with the corresponding error coordinates. In the
+level experiment,
+\begin{equation}
+ W_h\simeq\begin{bmatrix}9.3170&-3.4358\\-5.3240&6.8717\end{bmatrix}
+ \quad [\mathrm{cm^3/(s\,cm)}].
+\end{equation}
+
+\section{Closed-Loop Experiments and Results}
+
+\subsection{Linear step responses}
+
+The analysis operating point has levels
+$h_s=[21.152,41.458,12.217,6.633]^T\ \mathrm{cm}$.
+Figure~\ref{fig:p3-open} shows linear unit pump-step responses in mass
+coordinates. Direct responses are first order and cross responses are
+slower cascades, as predicted by \eqref{eq:p3-transfer}.
+Figure~\ref{fig:p3-linear} shows the full PI-controlled linear reference
+response. Off-diagonal responses illustrate the transient coupling that
+remains after static decoupling.
+
+\subsection{Nonlinear level regulation}
+
+The nonlinear level experiment starts at equilibrium for
+$u_s=[300,300]^T$ and $d_s=[100,100]^T$, with lower-tank levels
+$[46.331,62.576]^T\ \mathrm{cm}$. The reference is set to
+$[45,30]^T\ \mathrm{cm}$ at the beginning of the simulation. The continuous
+PI controllers are discretized by Tustin's substitution,
+\begin{equation}
+ s\simeq\frac{2}{T_s}\frac{z-1}{z+1},\qquad
+ C_i(z)=K_{p,i}+\frac{K_{i,i}T_s}{2}\frac{z+1}{z-1},\qquad T_s=2\ \mathrm{s}.
+\end{equation}
+MATLAB state-space realizations of these discrete controllers update the
+controller states. Pump commands are held between samples, clipped below
+at zero, and the nonlinear plant is integrated with \texttt{ode45}.
+There is no upper pump bound or anti-windup mechanism in this experiment.
+Measurement noise is zero and disturbances remain constant.
+
+Figure~\ref{fig:p3-level} shows the levels and pump commands. At
+$1200\ \mathrm{s}$ the true levels are
+$[44.999284,29.999880]^T\ \mathrm{cm}$ and the pump flows are
+$[419.766,42.587]^T\ \mathrm{cm^3/s}$.
+The residual errors are below $0.001\ \mathrm{cm}$ in both tanks.
+Using a settling band of 2\% of each initial reference change, the
+sampled settling times are $774\ \mathrm{s}$ for tank 1 and
+$444\ \mathrm{s}$ for tank 2. Tank 1 first rises despite its lower
+reference, and tank 2 undershoots before settling; these transients show
+the effects of residual interaction and actuator saturation.
+During the transient, pump 2 reaches its zero lower bound. The recorded
+pump ranges are $385.260\leq F_1\leq435.608$ and
+$0\leq F_2\leq75.472\ \mathrm{cm^3/s}$.
+Although the target in tank 1 changes only slightly, its pump must increase
+substantially because reducing pump 2 also reduces the indirect supply
+through tank 3. This demonstrates the importance of multivariable coupling.
+The observed recovery from saturation does not establish robustness to
+persistent saturation; an anti-windup design would be needed to address it.
+
+\subsection{Independent linear and nonlinear feedback loops}
+
+The comparison uses $u_s=[300,300]^T$, $d_s=0$, and initial lower-tank
+levels $[24.672,36.855]^T\ \mathrm{cm}$. The mass reference for tank 1
+increases by $2000\ \mathrm{g}$ at $200\ \mathrm{s}$, followed by the same
+increase for tank 2 at $1000\ \mathrm{s}$. Each increase corresponds to
+$2000/(\rho A_i)=5.261\ \mathrm{cm}$.
+The linear and nonlinear plants have separate PI integrator states and
+separate feedback loops. Both plant states use forward Euler with
+$T_s=0.5\ \mathrm{s}$ over $2000\ \mathrm{s}$. Each loop computes
+\begin{equation}
+ I_{k+1}=I_k+T_s e_k,\qquad
+ u_k=\operatorname{clip}_{[0,1000]}
+ \left(u_s+W_m(K_p e_k+K_i I_{k+1})\right),
+\end{equation}
+where $K_p,K_i$ are diagonal gain matrices. The linear state is integrated
+in deviation coordinates with its own command $u_k-u_s$.
+
+Independent Gaussian sensor errors have standard deviations
+$0,10,50\ \mathrm{g}$, equivalent to $0,0.0263,0.1315\ \mathrm{cm}$.
+The experiments reuse the same standardized noise array, generated with
+seed 100, scaled to each noise level. Linear and nonlinear loops receive
+the same noise realization within each case. No process noise is included.
+Figure~\ref{fig:p3-comparison} plots true masses, rather than noisy readings.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Maximum absolute difference between true nonlinear and linear
+ levels over the full comparison, and nonlinear pump standard deviations
+ over $1500$--$2000\ \mathrm{s}$.}
+ \label{tab:p3-comparison}
+ \begin{tabular}{rrrrr}
+ \hline
+ Sensor SD (g) & $\max|h_1^{NL}-h_1^L|$ (cm) &
+ $\max|h_2^{NL}-h_2^L|$ (cm) & SD($F_1$) & SD($F_2$)\\
+ \hline
+ 0 & 0.0732 & 0.1169 & 0.0574 & 0.0594\\
+ 10 & 0.0732 & 0.1169 & 0.3773 & 0.3214\\
+ 50 & 0.0731 & 0.1169 & 1.8499 & 1.5901\\
+ \hline
+ \end{tabular}
+\end{table}
+Pump standard deviations in Table~\ref{tab:p3-comparison} are in
+$\mathrm{cm^3/s}$. The noiseless values include the remaining settling drift.
+The two models predict similar level trajectories for these steps, while
+larger sensor noise increases pump variability. Without noise, the final
+nonlinear mass errors are $[0.0668,0.1240]^T\ \mathrm{g}$, corresponding to
+less than $0.0004\ \mathrm{cm}$. Agreement in these experiments supports
+local use of the linear design, but does not establish performance for
+arbitrary operating points, process disturbances, or larger reference changes.
+
+\begingroup
+\newcommand{\pThreeFigure}[1]{%
+ \IfFileExists{problem03/results/#1.pdf}{%
+ \includegraphics[width=\linewidth]{problem03/results/#1.pdf}}{%
+ \includegraphics[width=\linewidth]{results/#1.pdf}}}
+\begin{figure}[htbp]
+ \centering\pThreeFigure{analysis_01}
+ \caption{Linear mass responses to unit pump-flow steps at the analysis
+ operating point. The direct and cross paths have different dynamics.}
+ \label{fig:p3-open}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pThreeFigure{analysis_02}
+ \caption{Full linear mass-reference response with static decoupling and
+ PI control. Off-diagonal panels show residual transient interaction.}
+ \label{fig:p3-linear}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pThreeFigure{level_control_01}
+ \caption{Linear level-reference responses for the PI design used in the
+ nonlinear level experiment.}
+ \label{fig:p3-level-linear}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pThreeFigure{level_control_02}
+ \caption{Nonlinear level regulation to $[45,30]^T\ \mathrm{cm}$ using
+ sampled PI control. The lower panel shows the actual pump commands.}
+ \label{fig:p3-level}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pThreeFigure{comparison_01}
+ \caption{Independent nonlinear and linear mass-feedback loops at three
+ measurement-noise levels, with identical noise supplied to both plants
+ in each case. Dotted curves show the mass references.}
+ \label{fig:p3-comparison}
+\end{figure}
+\endgroup
+
+\section{Scope of the Controller Evaluation}
+
+The available code in this repository and the source scripts in
+\texttt{../MPC/four-tank-model/} implement PI control. P and filtered PID
+structures are given above, but their tuning and closed-loop simulations
+have not yet been implemented. Consequently, the figures and numerical
+results in this chapter evaluate PI control only. Completing the requested
+P/PI/PID comparison requires separate P and PID designs tested on the same
+references, operating point, disturbance sequences, sensor noise, and pump
+constraints. Such tests should compare tracking error, settling, interaction,
+and actuator variability, with derivative filtering and saturation treatment
+specified explicitly.

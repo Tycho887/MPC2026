@@ -1,0 +1,114 @@
+% Add packages
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[danish, english]{babel}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{lmodern}
+\usepackage{lipsum}
+\usepackage[intoc]{nomencl} % Nomenclature package
+\usepackage{color}
+\usepackage{times}
+\usepackage{textcomp}
+\usepackage{hyperref}
+\usepackage{textpos}
+\usepackage{indentfirst}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{ifthen}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{gensymb}
+\DeclareUnicodeCharacter{2212}{-}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{amsfonts}
+\usepackage[lined,ruled,linesnumbered,commentsnumbered]{algorithm2e}
+\usepackage{xcolor}
+\SetCommentSty{commentFont}
+\newcommand\commentFont[1]{\textcolor{gray}{#1}}
+\usepackage[framed,numbered,autolinebreaks,useliterate]{mcode}
+
+\usepackage{amsmath}
+\usepackage{float}
+
+\usepackage{caption, subcaption}
+\captionsetup[subfigure]{labelformat=simple}
+
+% Enable subfigures
+\newsubfloat{figure}
+
+% Path to graphics
+\graphicspath{{gfx/}}
+
+\everymath{\displaystyle}
+
+% Avoid a warning
+\pdfminorversion=5
+
+% Define layout dimensions
+
+\setlrmarginsandblock{35mm}{25mm}{*}
+\setulmarginsandblock{30mm}{30mm}{*}
+\setheadfoot{8mm}{10mm}
+\checkandfixthelayout
+\OnehalfSpacing
+
+\usepackage{natbib} % Bibliography package
+\usepackage{siunitx} % Should stay after \EndPreamble
+
+% Create a theorem environment
+\newtheorem{theorem}{Theorem}
+
+% Chapter style
+\chapterstyle{madsen}
+
+% Section numbering depth
+\maxtocdepth{subsection}
+\maxsecnumdepth{subsection}
+
+% Enable nomenclature
+\makenomenclature
+
+
+% Enable line numbering
+%\usepackage{lineno}
+%\pagewiselinenumbers
+%\modulolinenumbers[5]
+
+
+% Change table of contents name
+\addto\captionsenglish{% Replace "english" with the language you use
+	\renewcommand{\contentsname}%
+	{Table of Contents}%
+}
+
+% Make floats name bold
+\captionnamefont{\bfseries}
+
+% Get a signature command
+\makeatletter
+\newcommand*{\getlength}[1]{\strip@pt#1}
+\makeatother
+
+\newlength{\signlength}
+\setlength{\signlength}{0.5\textwidth}
+
+\newcommand{\signature}[1]{%
+\noindent \line(1,0){\getlength{\signlength}}\\
+\noindent #1
+}
+
+% Add measuring units to nomenclature
+\newcommand{\nomunit}[1]{\renewcommand{\nomentryend}{\hspace*{\fill}#1}}
+
+\captionstyle{\OnehalfSpacing}
+
+
+% Company logo
+\def\bCompanyLogo{true}
+
+% A fix for memoir-kluwer
+\renewcommand{\bf}{\textbf}

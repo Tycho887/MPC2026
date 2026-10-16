@@ -1,0 +1,86 @@
+\chapter{Control Structure}
+
+
+%Example on how to cite
+%\cite{Nocedal:Wright:2006}
+
+\section{Problem 1}
+Example on how to write an optimization problem
+\begin{subequations}
+\begin{alignat}{3}
+& \min_x \quad && f(x) = \frac{1}{2} x' H x + g' x \\
+& s.t. && c(x) = A' x + b = 0
+\end{alignat}
+\end{subequations}
+
+\subsection{Subsection XX.aa}
+
+\section{Section YY}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[width=0.75\textwidth, keepaspectratio=true]{figures/FsTsEaR.pdf}
+\caption{Steady state temperature, $T_s$, as a function of the steady state flow rate, $F_s$ with varying $E_a/R$.}\label{fig:FsTsEaR}
+\end{figure}
+
+
+\begin{figure}[!tb]
+\centering
+    \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{figures/FsTsconst_flow450.pdf}
+         \caption{Steady state temperature, $T_s$, as a function of the steady state flow rate, $F_s$.}
+         \label{fig:FsTsconst_flow450}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{figures/RTQ-T.pdf}
+         \caption{The energy produces, $R_T(T)$, and the energy released, $Q(T)$, as functions of the temperature, $T$.}
+         \label{fig:RTQ-T}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{figures/dTdt-T.pdf}
+         \caption{The change in temperature with respect to time, $\dot T$, as a function of the temperature, $T$.}
+         \label{fig:dTdt-T}
+     \end{subfigure}
+        \caption{The dynamical behaviour of the system at flow rate, $F=450$ mL/min. MAKE SURE YOUR FIGURE TEXT IS LARGE ENOUGH TO BE READABLE.}
+        \label{fig:flow rate 450}
+\end{figure}
+
+
+\section{Algorithm}
+
+\begin{algorithm}
+\caption{The explicit Euler algorithm}\label{alg:explicit Euler}
+\KwData{The differential equation $f(t,x(t),p)$, initial and final time $t_0$ and $t_f$, number of steps $N$, initial conditions $x_0$, parameters $p$}
+\KwResult{time and approximation vectors $T$ and $X$}
+calculate step size, $dt=\frac{t_f-t_0}{N}$;\\
+
+\For{n = 1 to N}{
+$f=f(t_n,x_n,p)$\tcp*[r]{Evaluate $f$ at current step}
+$t_{n+1}=t_n+dt$\tcp*[r]{Update and store time step}
+$x_{n+1}=x_n+f\cdot dt$\tcp*[r]{Compute and store the next value of $x$}}
+\end{algorithm}
+
+\section{Matlab code}
+
+\begin{lstlisting}[caption=Matlab code example]
+clear
+close all
+clc
+
+% Explicit Euler fixed step size for 1D CSTR
+T = 0;
+X = x0;
+x = x0;
+for i = 1:length(t)-1
+    [Tn, Xn] = ExplicitEulerFixed(@CSTR1dDrift, [t(i) t(i+1)],N, x(i), U(i), p);
+    x(i+1) = Xn(end);
+    T = [T;Tn(2:end)];
+    X = [X;Xn(2:end)];
+end
+\end{lstlisting}
+\label{lst:MatlabCodeLabel1}
