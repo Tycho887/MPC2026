@@ -1,0 +1,245 @@
+% Chapter fragment: load amsmath and graphicx in the main report.
+% Figure paths support compilation from the repository root or problem02/.
+\chapter{Deterministic and Stochastic Nonlinear Modeling}
+\label{chap:problem2}
+
+\section{Deterministic Nonlinear Model}
+
+The states are the water masses $x=[m_1,m_2,m_3,m_4]^T$, the
+manipulated inputs are $u=[F_1,F_2]^T$, and the unmeasured disturbances
+are $d=[F_3,F_4]^T$. Flows are volumetric flow rates in
+$\mathrm{cm^3/s}$, masses are in grams, and tank levels are in centimetres.
+For constant density $\rho$ and tank cross-sectional areas $A_i$,
+the levels and outlet flows satisfy
+\begin{equation}
+ h_i=\frac{m_i}{\rho A_i},\qquad
+ q_i=a_i\sqrt{2g h_i},\qquad i=1,\ldots,4,
+ \label{eq:p2-torricelli}
+\end{equation}
+where $a_i$ is the outlet area and $g$ is gravitational acceleration.
+This model assumes incompressible water, constant tank areas, and ideal
+gravity-driven discharge according to Torricelli's law.
+
+Pump 1 sends the fraction $\gamma_1$ to tank 1 and the remainder to
+tank 4. Pump 2 sends the fraction $\gamma_2$ to tank 2 and the remainder
+to tank 3. Tanks 3 and 4 drain into tanks 1 and 2, respectively.
+The mass balances are therefore
+\begin{align}
+ \dot m_1&=\rho(-q_1+q_3+\gamma_1F_1),\\
+ \dot m_2&=\rho(-q_2+q_4+\gamma_2F_2),\\
+ \dot m_3&=\rho(-q_3+(1-\gamma_2)F_2+F_3),\\
+ \dot m_4&=\rho(-q_4+(1-\gamma_1)F_1+F_4).
+ \label{eq:p2-balances}
+\end{align}
+Writing $q(x,p)=[q_1,q_2,q_3,q_4]^T$ gives the required model
+\begin{equation}
+ \dot x=f(x,u,d,p)=\rho\bigl(Qq(x,p)+Uu+Dd\bigr),
+ \label{eq:p2-drift}
+\end{equation}
+with routing matrices
+\begin{equation}
+ Q=\begin{bmatrix}-1&0&1&0\\0&-1&0&1\\0&0&-1&0\\0&0&0&-1\end{bmatrix},
+ \quad U=\begin{bmatrix}\gamma_1&0\\0&\gamma_2\\0&1-\gamma_2\\1-\gamma_1&0\end{bmatrix},
+ \quad D=\begin{bmatrix}0&0\\0&0\\1&0\\0&1\end{bmatrix}.
+\end{equation}
+Internal flows cancel when the balances are summed:
+$\sum_i\dot m_i=\rho(F_1+F_2+F_3+F_4-q_1-q_2)$.
+Only the square-root discharge law introduces nonlinearity.
+
+The sensors measure the lower-tank levels, which are also the controlled
+outputs. In the deterministic model,
+\begin{equation}
+ y=g(x,p)=Cx,\qquad z=h(x,p)=Cx,\qquad
+ C=\begin{bmatrix}(\rho A_1)^{-1}&0&0&0\\0&(\rho A_2)^{-1}&0&0\end{bmatrix}.
+ \label{eq:p2-output}
+\end{equation}
+Here $h(x,p)$ denotes the output map, while $h_i$ denotes a tank level.
+The physical parameters used in all experiments are
+\begin{equation}
+\begin{gathered}
+ A_i=380.1327\ \mathrm{cm^2},\quad a_i=1.2272\ \mathrm{cm^2},\quad
+ g=981\ \mathrm{cm/s^2},\\
+ \rho=1\ \mathrm{g/cm^3},\qquad \gamma_1=0.6,\qquad\gamma_2=0.7.
+\end{gathered}
+\end{equation}
+
+\section{Stochastic Nonlinear Model}
+
+For piecewise constant disturbances, the dynamics retain the form
+\eqref{eq:p2-drift}, but
+\begin{equation}
+ d(t)=d_k=\bar d+\eta_k,\qquad t_k\leq t<t_{k+1},\qquad
+ \eta_k\sim\mathcal N(0,R_{dd}).
+\end{equation}
+The disturbance samples are independent across time and between the two
+upper tanks. Conditional on a sampled disturbance sequence, the state
+trajectory is obtained by solving an ordinary differential equation.
+In the experiment,
+\begin{equation}
+ \bar d=\begin{bmatrix}20\\20\end{bmatrix}\ \mathrm{cm^3/s},\qquad
+ R_{dd}=\begin{bmatrix}25&0\\0&25\end{bmatrix}(\mathrm{cm^3/s})^2,
+\end{equation}
+and each realization is held for $10\ \mathrm{s}$. A Gaussian distribution
+allows negative flows; it approximates fluctuations around the positive
+mean here, rather than imposing a strictly nonnegative inflow model.
+
+The sampled sensor model and true controlled outputs are
+\begin{equation}
+ y_k=Cx(t_k)+v_k,\qquad v_k\sim\mathcal N(0,R_{vv}),\qquad
+ z(t)=Cx(t),\qquad R_{vv}=0.25I_2\ \mathrm{cm^2}.
+ \label{eq:p2-noisy-sensor}
+\end{equation}
+Measurement errors are independent across samples, between sensors, and
+of the process disturbances. They affect observations but do not enter
+the tank mass balances. Thus $z$ and $y$ must be distinguished even though
+they describe the same levels.
+
+\section{Stochastic Nonlinear Model (SDE)}
+
+An alternative models accumulated disturbance volume as a mean inflow
+plus Brownian fluctuations. Let $W=[W_3,W_4]^T$ consist of two independent
+standard Wiener processes. The implemented It\^o SDE is
+\begin{equation}
+ dx=f(x,u,\bar d,p)\,dt+\Sigma\,dW,\qquad
+ \Sigma=\rho D\begin{bmatrix}s_3&0\\0&s_4\end{bmatrix},\qquad
+ s_3=s_4=5\ \mathrm{cm^3/s^{1/2}}.
+ \label{eq:p2-sde}
+\end{equation}
+The mean disturbances remain in the drift. Over an interval $\Delta t$,
+the random mass increment has covariance
+\begin{equation}
+ \operatorname{Cov}(\Sigma\Delta W)=\Sigma\Sigma^T\Delta t,\qquad
+ \Sigma\Sigma^T=\rho^2\operatorname{diag}(0,0,s_3^2,s_4^2).
+\end{equation}
+Process noise enters tanks 3 and 4 directly and propagates to the lower
+tanks through their outlet flows. The measurement model remains
+\eqref{eq:p2-noisy-sensor}; measurement noise is sampled Gaussian noise,
+whereas $W$ drives the continuous-time state dynamics.
+
+Brownian volume increments represent rapid unresolved inflow fluctuations
+and give a simple model with independent increments and constant diffusion.
+They do not define an ordinary instantaneous flow $F_i(t)$: formally the
+fluctuating flow is white noise. If inflow fluctuations have appreciable
+temporal correlation, a mean-reverting disturbance state would be more
+appropriate. Also, the value 5 in this diffusion model has different units
+from the standard deviation 5 in the held-flow model. A held fluctuation
+with variance $25$ contributes volume variance $25\Delta t^2$ over one
+holding interval, while this SDE contributes $25\Delta t$ (with the
+respective units). The runs illustrate different disturbance assumptions
+rather than matched process-noise intensities.
+
+\section{Simulation}
+
+\subsection{Experimental setup and numerical method}
+
+The three open-loop experiments start with empty tanks, $x(0)=0$, and run
+until $1200\ \mathrm{s}$. The pump inputs are held constant between samples:
+\begin{equation}
+ F_1(t)=\begin{cases}300,&t<t_a,\\350,&t\geq t_a,\end{cases}
+ \qquad
+ F_2(t)=\begin{cases}300,&t<t_b,\\250,&t\geq t_b,\end{cases}
+ \quad [\mathrm{cm^3/s}].
+\end{equation}
+The deterministic and held-disturbance experiments use a $10\ \mathrm{s}$
+grid and MATLAB's \texttt{ode15s}, restarted on each interval to preserve
+the input discontinuities. Their step times are $t_a=390\ \mathrm{s}$ and
+$t_b=790\ \mathrm{s}$. The SDE uses a $0.1\ \mathrm{s}$ grid, giving
+$t_a=399.9\ \mathrm{s}$ and $t_b=799.9\ \mathrm{s}$. These differences
+follow from the sample-index-based step definition in
+\texttt{problem02Experiments.m}.
+
+The SDE is integrated with the projected Euler--Maruyama update
+\begin{equation}
+ x_{k+1}=\max\left\{0,\ x_k+f(x_k,u_k,\bar d,p)\Delta t
+                    +\Sigma\Delta W_k\right\},\qquad
+ \Delta W_k\sim\mathcal N(0,\Delta t I_2),
+\end{equation}
+where the maximum acts componentwise. Constant diffusion makes the
+Milstein correction zero. The projection prevents negative masses near
+empty tanks; it is a numerical boundary treatment and modifies the
+unconstrained SDE at that boundary. The ODE drift evaluates the square root
+using nonnegative trial masses. The deterministic run uses $d=\bar d$ and
+zero measurement noise. Both stochastic runs use measurement standard
+deviation $0.5\ \mathrm{cm}$ and MATLAB's \texttt{twister} generator with
+seed 100. Their sampling grids and random-array sizes differ, so the seed
+does not make them share the same noise realization.
+
+\subsection{Open-loop results}
+
+\begingroup
+\newcommand{\pTwoFigure}[1]{%
+ \IfFileExists{problem02/results/#1.pdf}{%
+  \includegraphics[width=\linewidth]{problem02/results/#1.pdf}}{%
+  \includegraphics[width=\linewidth]{results/#1.pdf}}}
+\begin{figure}[htbp]
+ \centering
+ \pTwoFigure{open_loop_01}
+ \caption{Deterministic open-loop simulation. Pump inputs and constant
+ disturbance flows are shown above the lower-tank outputs. With zero
+ measurement noise, $y_i=z_i$.}
+ \label{fig:p2-deterministic}
+\end{figure}
+\begin{figure}[htbp]
+ \centering
+ \pTwoFigure{open_loop_02}
+ \caption{Open-loop simulation with Gaussian disturbance flows held for
+ $10\ \mathrm{s}$ and independent measurement noise. The curves $z_i$
+ show true levels; the points $y_i$ are noisy observations.}
+ \label{fig:p2-held}
+\end{figure}
+\begin{figure}[htbp]
+ \centering
+ \pTwoFigure{open_loop_03}
+ \caption{SDE open-loop simulation with $0.1\ \mathrm{s}$ integration steps.
+ The middle panel shows upper-tank levels $h_3,h_4$, which receive the
+ Brownian process noise directly. The bottom panel shows measured and
+ true lower-tank levels.}
+ \label{fig:p2-sde}
+\end{figure}
+\endgroup
+
+Figures~\ref{fig:p2-deterministic}--\ref{fig:p2-sde} show filling from the
+empty initial state and the responses to the two pump steps. Increasing
+$F_1$ raises tank 1 through its direct inflow and tank 2 through tank 4.
+Decreasing $F_2$ lowers tank 2 directly and tank 1 through tank 3.
+The indirect paths include an additional tank and produce a slower response.
+In the stochastic runs, the lower tanks smooth the upper-tank disturbances,
+while measurement noise produces scatter around the true outputs.
+
+Table~\ref{tab:p2-results} reports the final true levels and empirical
+root-mean-square measurement errors, computed as
+$\sqrt{N^{-1}\sum_{k=1}^N(y_{i,k}-z_{i,k})^2}$ from
+\texttt{results/open\_loop.mat}.
+\begin{table}[htbp]
+ \centering
+ \caption{Final levels at $1200\ \mathrm{s}$ and measurement-error RMS,
+ all in centimetres. Each stochastic result is a single realization.}
+ \label{tab:p2-results}
+ \begin{tabular}{lrrrrrr}
+  \hline
+  Model & $h_1$ & $h_2$ & $h_3$ & $h_4$ & RMS$_1$ & RMS$_2$\\
+  \hline
+  Deterministic & 31.509 & 38.056 & 3.054 & 8.664 & 0.000 & 0.000\\
+  Held disturbances & 31.498 & 37.943 & 3.055 & 8.357 & 0.471 & 0.549\\
+  SDE & 31.469 & 38.074 & 3.001 & 8.642 & 0.502 & 0.497\\
+  \hline
+ \end{tabular}
+\end{table}
+
+As a deterministic reference, setting the balances to zero gives
+\begin{align}
+ q_3^*&=(1-\gamma_2)F_2+\bar F_3,&
+ q_4^*&=(1-\gamma_1)F_1+\bar F_4,\\
+ q_1^*&=\gamma_1F_1+q_3^*,&
+ q_2^*&=\gamma_2F_2+q_4^*,\\
+ h_i^*&=\frac{(q_i^*/a_i)^2}{2g}.&&
+\end{align}
+For the final inputs $u=[350,250]^T$ and $\bar d=[20,20]^T$, this yields
+$h^*=[31.483,37.980,3.054,8.664]^T\ \mathrm{cm}$.
+The deterministic final lower-tank levels remain slightly above this
+equilibrium because the response to the second step has not completely
+settled. The stochastic final levels are close to this reference, and
+their measurement RMS values are consistent with the specified
+$0.5\ \mathrm{cm}$ standard deviation. These single trajectories illustrate
+model behaviour; they do not establish ensemble means, confidence
+intervals, or numerical convergence of the SDE discretization.

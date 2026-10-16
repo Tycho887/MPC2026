@@ -256,9 +256,7 @@ arbitrary operating points, process disturbances, or larger reference changes.
 
 \begingroup
 \newcommand{\pThreeFigure}[1]{%
- \IfFileExists{problem03/results/#1.pdf}{%
- \includegraphics[width=\linewidth]{problem03/results/#1.pdf}}{%
- \includegraphics[width=\linewidth]{results/#1.pdf}}}
+ \includegraphics[width=\linewidth]{tex/chapters/results/problem03/#1.pdf}}
 \begin{figure}[htbp]
  \centering\pThreeFigure{analysis_01}
  \caption{Linear mass responses to unit pump-flow steps at the analysis

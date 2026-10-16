@@ -1,0 +1,24 @@
+# Local metadata and MATLAB output
+.DS_Store
+/code/problem*/results/
+*.asv
+matlab_crash_dump.*
+
+# LaTeX build output (keep source PDFs and report figure snapshots)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.nlo
+*.nls
+*.ilg
+*.idx
+*.ind
+*.synctex.gz
+/mainReport.pdf
