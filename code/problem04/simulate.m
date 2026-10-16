@@ -9,3 +9,7 @@ saveExperiment(fullfile(problemDirectory,'results'),'stochastic_steps',problem04
 saveExperiment(fullfile(problemDirectory,'results'),'identification',problem04IdentificationResults,problem04IdentificationFigures);
 [problem04MarkovResults, problem04MarkovFigures] = problem04Markov(problem04IdentificationResults);
 saveExperiment(fullfile(problemDirectory,'results'),'markov',problem04MarkovResults,problem04MarkovFigures);
+[problem04ReportResults, problem04ReportFigures] = problem04Report( ...
+    problem04DeterministicResults,problem04StochasticResults, ...
+    problem04IdentificationResults,problem04MarkovResults);
+saveExperiment(fullfile(problemDirectory,'results'),'normalized_steps',problem04ReportResults,problem04ReportFigures);

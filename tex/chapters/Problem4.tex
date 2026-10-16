@@ -1,3 +1,347 @@
-\chapter{Nonlinear Simulation - Step Responses}
+% Derivations checked against ../MPC/transferFunction4TankSystem.md and
+% ../MPC/four-tank-model/problem4_4.m and problem4_6.m.
+\chapter{Nonlinear Simulation -- Step Responses}
+\label{chap:problem4}
 
+\section{Simulate Step Response}
 
+Step experiments characterize how each manipulated pump flow affects the
+two measured lower-tank levels. All experiments use the nonlinear mass
+balances and physical parameters of Chapter~\ref{chap:problem2}. The
+initial condition is the equilibrium for
+\begin{equation}
+ u_s=[300,300]^T\ \mathrm{cm^3/s},\qquad
+ \bar d=[20,20]^T\ \mathrm{cm^3/s},\qquad
+ h_s=[28.4621,41.4578,4.0950,6.6332]^T\ \mathrm{cm}.
+\end{equation}
+Starting at equilibrium separates the input-step response from a tank-filling
+transient. Pump $j$ is stepped in a separate experiment, while the other
+pump remains at its nominal flow:
+\begin{equation}
+ u(t)=u_s+e_j\Delta F_j\,\mathbf{1}_{t\geq200},\qquad
+ \Delta F_j=\alpha F_{j,s},\qquad \alpha\in\{0.10,0.25,0.50\}.
+\end{equation}
+Here $e_j$ is the $j$th unit vector. The increments are $30$, $75$, and
+$150\ \mathrm{cm^3/s}$, giving final pump flows of $330$, $375$, and
+$450\ \mathrm{cm^3/s}$. Each experiment ends at $1200\ \mathrm{s}$,
+providing $1000\ \mathrm{s}$ after the step.
+
+In the deterministic case, disturbances remain at $\bar d$ and measurement
+noise is zero. MATLAB's \texttt{ode15s} integrates the intervals before and
+after the step separately. Figures~\ref{fig:p4-det1} and
+\ref{fig:p4-det2} show the resulting levels and pump inputs.
+The direct paths $F_1\to h_1$ and $F_2\to h_2$ respond faster than the
+indirect paths through the upper tanks. All positive steps increase both
+lower-tank levels, consistent with the positive inflow routing.
+
+\section{Simulate Step Response with Varying Noise Levels}
+
+The stochastic experiments use the additive SDE from
+Chapter~\ref{chap:problem2}:
+\begin{equation}
+ dx=f(x,u,\bar d,p)\,dt+\rho D\operatorname{diag}(s_3,s_4)\,dW,
+ \qquad y_k=Cx_k+v_k,\quad v_k\sim\mathcal N(0,\sigma_y^2 I_2).
+\end{equation}
+Process disturbances enter the upper tanks directly, while sensor noise
+is added to the lower-tank level observations. Low, medium, and high noise
+scale both diffusion intensity and measurement standard deviation:
+\begin{table}[htbp]
+ \centering
+ \caption{Noise settings for the stochastic step experiments.}
+ \label{tab:p4-noise}
+ \begin{tabular}{lrrr}
+ \hline
+ Setting & Scale & $s_3=s_4$ ($\mathrm{cm^3/s^{1/2}}$) & $\sigma_y$ (cm)\\
+ \hline
+ Low & 0.5 & 2.5 & 0.25\\
+ Medium & 1 & 5 & 0.50\\
+ High & 2 & 10 & 1.00\\
+ \hline
+ \end{tabular}
+\end{table}
+The state update is projected Euler--Maruyama with $\Delta t=0.1\ \mathrm{s}$,
+using independent Brownian increments with covariance $\Delta t I_2$.
+A single standardized process and measurement realization, generated with
+seed 100, is reused across all step sizes and noise scales. This controls
+random variation when comparing settings, but these runs are correlated
+experiments rather than independent repetitions. Measurements are simulated
+every $0.1\ \mathrm{s}$; the plots display them every $1\ \mathrm{s}$.
+Figures~\ref{fig:p4-stoch1} and \ref{fig:p4-stoch2} distinguish true level
+curves from measured level points. Increased noise causes greater measurement
+scatter, while upper- and lower-tank dynamics smooth the process disturbances.
+
+\section{Normalized Step Responses}
+
+For input $j$ and output $i$, define the normalized response
+\begin{equation}
+ S_{ij}(\tau;\Delta F_j)=
+ \frac{h_i(200+\tau)-h_{i,s}}{\Delta F_j},\qquad \tau\geq0.
+ \label{eq:p4-normalization}
+\end{equation}
+For measured data, the baseline is estimated from the mean measurement over
+$150\leq t<200\ \mathrm{s}$, giving
+$\widehat S_{ij}=(y_i-\widehat h_{i,0})/\Delta F_j$.
+This normalization gives units of $\mathrm{cm/(cm^3/s)}$ and compares the
+response per unit pump increment. It does not rescale every response to
+unit final value. For an LTI plant, normalized responses to different
+step amplitudes would coincide.
+
+Figures~\ref{fig:p4-normdet1}--\ref{fig:p4-normstoch2} plot normalized
+responses for every pump, amplitude, and noise level. The deterministic
+curves do not collapse: larger positive steps give greater normalized
+steady gains. This follows directly from the equilibrium relation
+$h_i=q_i^2/(2ga_i^2)$. For a lower-tank outlet flow increment
+$\Delta q_i=\beta_{ij}\Delta F_j$, with
+\begin{equation}
+ [\beta_{ij}]=\begin{bmatrix}0.6&0.3\\0.4&0.7\end{bmatrix},
+\end{equation}
+the exact finite-step equilibrium gain is
+\begin{equation}
+ \frac{\Delta h_i^*}{\Delta F_j}
+ =\frac{q_{i,s}\beta_{ij}}{ga_i^2}
+  +\frac{\beta_{ij}^2\Delta F_j}{2ga_i^2}.
+ \label{eq:p4-secant}
+\end{equation}
+The first term is the local linearized gain. The second term explains the
+amplitude dependence of positive step tests.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Deterministic normalized levels at $1200\ \mathrm{s}$ and local
+ linearized gains. All entries are in $\mathrm{cm/(cm^3/s)}$. The final
+ levels approximate equilibrium; a small settling residual remains.}
+ \label{tab:p4-gains}
+ \begin{tabular}{lrrrr}
+ \hline
+ Channel & Local gain & 10\% step & 25\% step & 50\% step\\
+ \hline
+ $F_1\to h_1$ & 0.11777 & 0.1214 & 0.1269 & 0.1360\\
+ $F_2\to h_1$ & 0.05889 & 0.0598 & 0.0612 & 0.0635\\
+ $F_1\to h_2$ & 0.09476 & 0.0964 & 0.0988 & 0.1029\\
+ $F_2\to h_2$ & 0.16583 & 0.1708 & 0.1782 & 0.1907\\
+ \hline
+ \end{tabular}
+\end{table}
+For fixed sensor noise, division by a larger step reduces normalized
+measurement scatter: $\operatorname{SD}(v_i/\Delta F_j)=\sigma_y/\Delta F_j$.
+At medium noise this is $0.0167$, $0.00667$, and $0.00333$
+$\mathrm{cm/(cm^3/s)}$ for 10\%, 25\%, and 50\% steps, respectively.
+Thus increasing excitation improves the signal relative to measurement
+noise while increasing the departure from a local linear model.
+
+\section{Transfer Function Identification}
+
+The channel structure follows the analytical derivation in
+Chapter~\ref{chap:problem3}: direct channels contain one tank lag and
+cross channels contain two. The fitted models therefore have no zeros
+or explicit delay and take the forms
+\begin{equation}
+ \widehat G_{ii}(s)=\frac{K_{ii}}{1+\tau_{ii}s},\qquad
+ \widehat G_{ij}(s)=\frac{K_{ij}}{(1+\tau_{ij,1}s)(1+\tau_{ij,2}s)},\quad i\ne j.
+\end{equation}
+Identification uses separate 25\% pump steps, with medium process and
+sensor noise, and seeds 101 and 102 for the two pump experiments.
+Each measured baseline is estimated over the last 50 seconds before the
+step. The normalized records are decimated from $0.1$ to $1\ \mathrm{s}$
+sampling by selecting every tenth observation. This reduces data volume;
+it is not averaging or an anti-aliasing filter.
+
+The reported run uses the continuous-time least-squares backend.
+For elapsed time $\tau\geq0$, its analytical unit-step models are
+\begin{align}
+ s_1(\tau)&=K(1-e^{-\tau/T}),\\
+ s_2(\tau)&=K\left[1-
+ \frac{T_1e^{-\tau/T_1}-T_2e^{-\tau/T_2}}{T_1-T_2}\right].
+\end{align}
+When $T_1=T_2=T$, the second expression has limit
+$K[1-(1+\tau/T)e^{-\tau/T}]$.
+MATLAB's \texttt{fminsearch} minimizes the sum of squared differences
+between measured normalized post-step samples and these analytical
+responses, with time constants bounded below by $0.01\ \mathrm{s}$ in
+the objective evaluation. The code can alternatively use \texttt{tfest}
+when System Identification Toolbox is available; its numerical estimates
+may differ from those reported here.
+
+The resulting continuous-time estimate is
+\begin{equation}
+ \widehat G(s)=\begin{bmatrix}
+ \dfrac{0.126480}{1+83.9148s}&
+ \dfrac{0.0600034}{(1+37.3589s)(1+76.0941s)}\\[6pt]
+ \dfrac{0.0990653}{(1+32.6327s)(1+109.7353s)}&
+ \dfrac{0.179349}{1+101.1440s}
+ \end{bmatrix}.
+ \label{eq:p4-identified}
+\end{equation}
+Rows correspond to $h_1,h_2$ and columns to $F_1,F_2$; time constants
+are in seconds and gains in $\mathrm{cm/(cm^3/s)}$.
+All fitted poles are real and negative. Figure~\ref{fig:p4-identification}
+compares model predictions with true nonlinear normalized levels and
+noisy normalized observations from the identification experiments.
+
+\section{Accuracy of the Identified Transfer Function}
+
+The gains in \eqref{eq:p4-identified} are close to the deterministic
+25\% finite-step gains in Table~\ref{tab:p4-gains}. They represent an
+approximation over that excursion, rather than the infinitesimal gain
+at the initial equilibrium. The initial tank time constants are
+$[74.6163,90.0541,28.3027,36.0216]^T\ \mathrm{s}$.
+These explain the physical channel orders, but fitted time constants can
+differ because outlet sensitivities change during a finite step and
+process noise affects the observed response. The two cross-channel pole
+time constants are unordered fit parameters; a fit does not uniquely
+assign each pole to a particular physical tank.
+
+To separate fit quality from generalization, the same model is evaluated
+against the separate deterministic 10\%, 25\%, and 50\% experiments.
+For each channel, predictions and true normalized levels are compared
+on a uniform $1\ \mathrm{s}$ grid over $0\leq\tau\leq1000\ \mathrm{s}$:
+\begin{equation}
+ \operatorname{RMSE}_{ij}=
+ \sqrt{\frac{1}{1001}\sum_{k=0}^{1000}
+  \left(S_{ij}(k)-\widehat S_{ij}(k)\right)^2}.
+\end{equation}
+The adaptively sampled deterministic response is interpolated onto this
+grid. Table~\ref{tab:p4-validation} reports the errors.
+\begin{table}[htbp]
+ \centering
+ \caption{Normalized response RMSE against separate deterministic tests,
+ in $\mathrm{cm/(cm^3/s)}$. The model is fitted to noisy 25\% experiments.}
+ \label{tab:p4-validation}
+ \begin{tabular}{lrrr}
+ \hline
+ Channel & 10\% validation & 25\% validation & 50\% validation\\
+ \hline
+ $F_1\to h_1$ & 0.0044 & 0.0005 & 0.0081\\
+ $F_2\to h_1$ & 0.0009 & 0.0013 & 0.0029\\
+ $F_1\to h_2$ & 0.0020 & 0.0007 & 0.0032\\
+ $F_2\to h_2$ & 0.0072 & 0.0010 & 0.0091\\
+ \hline
+ \end{tabular}
+\end{table}
+For context, comparison against the true trajectories of the identification
+runs gives normalized RMSE between $0.0010$ and $0.0012$. That is a
+comparison on the fitting experiments, not independent validation.
+The larger deterministic validation errors at 50\% show the limits of
+using one linear model across different amplitudes. At 25\%, multiplying
+normalized RMSE by $75\ \mathrm{cm^3/s}$ gives level RMSE of approximately
+$0.04$--$0.10\ \mathrm{cm}$.
+
+A useful step experiment requires an established baseline, accurate input
+amplitude and timing, sufficiently long records to observe slow modes,
+and excitation large enough to distinguish the response from noise.
+Separate input steps isolate columns of the transfer matrix. Sampling
+must resolve the fastest relevant dynamics, and model order should reflect
+physical knowledge without adding unsupported parameters. Repeated runs
+or separate noisy validation records would be needed to assess uncertainty
+and robustness to new disturbance realizations. These results demonstrate
+finite-step fit accuracy, without providing parameter confidence intervals.
+
+\section{Markov Parameters}
+
+The identified continuous-time model is discretized with a zero-order
+hold at $T_s=4\ \mathrm{s}$, appropriate for pump commands held between
+samples. For a continuous realization $(A_c,B_c,C_c,D_c)$,
+\begin{equation}
+ A_d=e^{A_cT_s},\qquad
+ B_d=\int_0^{T_s}e^{A_c\tau}B_c\,d\tau,\qquad C_d=C_c,\quad D_d=D_c.
+\end{equation}
+The deviation model is
+$\delta x_{k+1}=A_d\delta x_k+B_d\delta u_k$ and
+$\delta z_k=C_d\delta x_k+D_d\delta u_k$.
+Its Markov coefficient matrices are
+\begin{equation}
+ H_0=D_d,\qquad H_k=C_dA_d^{k-1}B_d\quad(k\geq1),\qquad
+ \delta z_k=\sum_{\ell=0}^{k}H_\ell\delta u_{k-\ell}
+ \label{eq:p4-markov}
+\end{equation}
+for zero initial deviation. Each $H_k$ is a $2\times2$ matrix with output
+rows and input columns. The strictly proper fitted models have $H_0=0$.
+For a unit input step, $S_k=\sum_{\ell=0}^kH_\ell$, so
+$H_k=S_k-S_{k-1}$ for $k\geq1$. Direct differencing of noisy measured
+steps would amplify noise; here the coefficients are computed from the
+fitted state-space model.
+
+Figure~\ref{fig:p4-markov} shows 60 matrices, $H_0$ through $H_{59}$,
+corresponding to $0$--$236\ \mathrm{s}$. Direct-channel coefficients
+are largest early and decay, while cross-channel coefficients build up
+before decaying because of the upper-tank lag. These are discrete
+coefficients for a unit input applied for one sample. MATLAB's
+unit-area impulse convention scales the discrete response by $1/T_s$;
+that scaling is not used in \eqref{eq:p4-markov}.
+
+For stable models, the infinite coefficient sum equals the static gain:
+\begin{equation}
+ \sum_{k=0}^{\infty}H_k=\widehat G(0).
+\end{equation}
+The plotted finite horizon omits approximately
+$\begin{bmatrix}6.0&8.7\\16.5&9.7\end{bmatrix}\%$
+of the respective channel gains. Thus 60 coefficients illustrate the
+impulse-response shapes but do not capture the entire slow response.
+A longer horizon would be needed if these coefficients were used to
+approximate settled outputs in a finite convolution model.
+
+% All figures are committed report snapshots; MATLAB is not needed to build.
+\begingroup
+\newcommand{\pFourFigure}[1]{%
+ \includegraphics[width=\linewidth]{tex/chapters/results/problem04/#1.pdf}}
+\begin{figure}[htbp]
+ \centering\pFourFigure{deterministic_steps_01}
+ \caption{Deterministic lower-tank levels and input profiles for separate
+ 10\%, 25\%, and 50\% positive steps in pump 1.}
+ \label{fig:p4-det1}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{deterministic_steps_02}
+ \caption{Deterministic lower-tank levels and input profiles for separate
+ 10\%, 25\%, and 50\% positive steps in pump 2.}
+ \label{fig:p4-det2}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{stochastic_steps_01}
+ \caption{Pump 1 stochastic step tests at low, medium, and high noise.
+ Curves show true levels; points show noisy observations at 1-second spacing.}
+ \label{fig:p4-stoch1}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{stochastic_steps_02}
+ \caption{Pump 2 stochastic step tests at low, medium, and high noise.
+ Curves show true levels; points show noisy observations at 1-second spacing.}
+ \label{fig:p4-stoch2}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{normalized_steps_01}
+ \caption{Normalized deterministic responses to pump 1 steps. Differences
+ between amplitudes expose the nonlinear finite-step gain.}
+ \label{fig:p4-normdet1}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{normalized_steps_02}
+ \caption{Normalized deterministic responses to pump 2 steps.}
+ \label{fig:p4-normdet2}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{normalized_steps_03}
+ \caption{Normalized pump 1 responses at all step sizes and noise levels.
+ True curves use the equilibrium baseline; measured points use the estimated
+ pre-step baseline and are displayed at 1-second spacing.}
+ \label{fig:p4-normstoch1}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{normalized_steps_04}
+ \caption{Normalized pump 2 responses at all step sizes and noise levels,
+ with true curves and noisy measured points.}
+ \label{fig:p4-normstoch2}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{identification_01}
+ \caption{Identified channel models compared with true nonlinear and measured
+ normalized responses from the noisy 25\% identification experiments.}
+ \label{fig:p4-identification}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pFourFigure{markov_01}
+ \caption{Markov parameters of the fitted model under a 4-second zero-order
+ hold. Coefficients beyond 236 seconds are not shown.}
+ \label{fig:p4-markov}
+\end{figure}
+\endgroup

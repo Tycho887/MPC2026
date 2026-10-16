@@ -111,10 +111,12 @@ preserved. The comparison uses forward Euler with 0.5 s steps and pump bounds
 ## Coverage and validation
 
 This is a migration of existing experiments. Problem 3 currently implements PI
-control; the P and PID experiments are still missing. Problem 4 normalizes the
-identification experiments, but does not yet plot normalized responses for every
-step/noise combination. Report prose, the remaining subproblems, and later exam
-problems are not added. Old Python scaffolding, environments, generated images,
+control; the P and PID experiments are still missing. Problem 4 additionally uses
+`problem04Report` to plot normalized responses for every step/noise combination
+and measure fitted-model accuracy against separate deterministic experiments.
+Its `normalized_steps.mat` contains the gains, response RMSEs, and Markov-tail
+fractions used in the report. Later exam problems are not implemented here.
+Old Python scaffolding, environments, generated images,
 and the malformed scratch `model.m` are not imported.
 
 For numerical and artifact checks, run:
