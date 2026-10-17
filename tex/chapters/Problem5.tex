@@ -1,14 +1,109 @@
 \chapter{Linearization and Discretization}
 
-\section{Linearizing Continous Time Models}
+\section{Linearizing Continuous-Time Models}
 
-\subsection{Deterministic model}
+To obtain linear state-space representations of the Modified Four Tank System, the nonlinear dynamics and output relations are linearized around a stationary operating point $(x_s, u_s, d_s)$. Given the nominal steady-state pump flow rates $u_s = [F_{1s}, F_{2s}]^T$ and nominal disturbance flow rates $d_s = [F_{3s}, F_{4s}]^T$, the steady-state liquid masses $x_s = [m_{1s}, m_{2s}, m_{3s}, m_{4s}]^T$, measurements $y_s$, and controlled outputs $z_s$ satisfy the equilibrium conditions:
+\begin{align}
+    0 &= f(x_s, u_s, d_s, p) \\
+    y_s &= g(x_s, p) \\
+    z_s &= h(x_s, p)
+\end{align}
+Deviation variables describing perturbations around this equilibrium are defined as:
+\begin{align}
+    X(t) &= x(t) - x_s, & U(t) &= u(t) - u_s, & D(t) &= d(t) - d_s, \\
+    Y(t) &= y(t) - y_s, & Z(t) &= z(t) - z_s
+\end{align}
 
-Here the nonlinear height term is approximated by taking a first order Taylor series expansion.
+\subsection{Deterministic Model}
 
-The system then becomes: x = Ax + Bu + Gd
-and the sensor observations are given by y = Cx
+In the deterministic formulation, the nonlinearity arises from Bernoulli's law in the gravity-driven tank outflows, $q_i = a_i \sqrt{2 g h_i}$. This nonlinear height term is approximated by taking a first-order Taylor series expansion of $f(x(t), u(t), d(t), p)$, $g(x(t), p)$, and $h(x(t), p)$ around the steady-state operating point $(x_s, u_s, d_s)$:
+\begin{align}
+    \dot{x}(t) &\approx f(x_s, u_s, d_s, p) + \frac{\partial f}{\partial x}(x_s, u_s, d_s, p)(x(t) - x_s) \nonumber \\
+    &\quad + \frac{\partial f}{\partial u}(x_s, u_s, d_s, p)(u(t) - u_s) + \frac{\partial f}{\partial d}(x_s, u_s, d_s, p)(d(t) - d_s)
+\end{align}
+Since $\dot{x}_s = f(x_s, u_s, d_s, p) = 0$, the linearized continuous-time deterministic state-space model in deviation variables becomes:
+\begin{align}
+    \dot{X}(t) &= A X(t) + B U(t) + G_d D(t) \\
+    Y(t) &= C X(t) \\
+    Z(t) &= C_z X(t)
+\end{align}
+Evaluating the partial derivatives of the mass balances with respect to the states $m_i$ yields the tank time constants $T_i$:
+\begin{equation}
+    T_i = \frac{A_i}{a_i} \sqrt{\frac{2 h_{is}}{g}}, \quad \text{with} \quad h_{is} = \frac{m_{is}}{\rho A_i}, \quad i \in \{1, 2, 3, 4\}
+\end{equation}
+The resulting system matrices $(A, B, G_d, C, C_z)$ are given by the Jacobians:
+\begin{align}
+    A &= \frac{\partial f}{\partial x}(x_s, u_s, d_s, p) = 
+    \begin{bmatrix}
+        -\frac{1}{T_1} & 0 & \frac{1}{T_3} & 0 \\
+        0 & -\frac{1}{T_2} & 0 & \frac{1}{T_4} \\
+        0 & 0 & -\frac{1}{T_3} & 0 \\
+        0 & 0 & 0 & -\frac{1}{T_4}
+    \end{bmatrix} \\
+    B &= \frac{\partial f}{\partial u}(x_s, u_s, d_s, p) = 
+    \begin{bmatrix}
+        \rho \gamma_1 & 0 \\
+        0 & \rho \gamma_2 \\
+        0 & \rho(1 - \gamma_2) \\
+        \rho(1 - \gamma_1) & 0
+    \end{bmatrix}, \quad
+    G_d = \frac{\partial f}{\partial d}(x_s, u_s, d_s, p) = 
+    \begin{bmatrix}
+        0 & 0 \\
+        0 & 0 \\
+        \rho & 0 \\
+        0 & \rho
+    \end{bmatrix} \\
+    C &= \frac{\partial g}{\partial x}(x_s, p) = 
+    \begin{bmatrix}
+        \frac{1}{\rho A_1} & 0 & 0 & 0 \\
+        0 & \frac{1}{\rho A_2} & 0 & 0
+    \end{bmatrix}, \quad
+    C_z = \frac{\partial h}{\partial x}(x_s, p) = 
+    \begin{bmatrix}
+        \frac{1}{\rho A_1} & 0 & 0 & 0 \\
+        0 & \frac{1}{\rho A_2} & 0 & 0
+    \end{bmatrix}
+\end{align}
 
 \subsection{Stochastic Nonlinear Model (ZOH)}
 
+In the piecewise-constant stochastic model, the unmeasured disturbances $F_3$ and $F_4$ are modeled as random variables held constant over each sampling interval, $d(t) = d_k$ for $t_k \le t < t_{k+1}$, while sensor measurements are corrupted by additive Gaussian noise $v(t) \sim \mathcal{N}(0, R_{vv}(p))$. 
+
+Because $d(t)$ is constant within each open sampling interval $(t_k, t_{k+1})$, the state trajectory remains continuously differentiable between sampling instants, and standard ordinary differential equation calculus applies. Decomposing the disturbance into its nominal mean $d_s = \mathbb{E}\{d_k\}$ and a zero-mean piecewise-constant random deviation $D_k = d_k - d_s \sim \mathcal{N}(0, Q_d)$ yields the linearized continuous-time model:
+\begin{align}
+    \dot{X}(t) &= A X(t) + B U(t) + G_d D(t), \quad D(t) = D_k \text{ for } t_k \le t < t_{k+1} \\
+    Y(t) &= C X(t) + v(t), \quad v(t) \sim \mathcal{N}(0, R_{vv}(p)) \\
+    Z(t) &= C_z X(t)
+\end{align}
+where the Jacobian matrices $(A, B, G_d, C, C_z)$ are identical to those derived for the deterministic model, and the additive measurement noise $v(t)$ enters the linearized sensor equation directly without modification.
+
 \subsection{Stochastic Nonlinear Model (SDE)}
+
+In the stochastic differential equation (SDE) formulation, continuous-time process variations in the unmeasured inflows $F_3$ and $F_4$ are driven by a standard Wiener process $\omega(t)$ with incremental covariance $\mathbb{E}\{d\omega(t)d\omega(t)^T\} = I \, dt$:
+\begin{equation}
+    dx(t) = f(x(t), u(t), d(t), p) \, dt + \sigma(x(t), u(t), d(t), p) \, d\omega(t)
+\end{equation}
+Because the Wiener process $\omega(t)$ is nowhere differentiable, the derivative $\frac{d\omega(t)}{dt}$ is not well-defined in standard calculus, and the system must be linearized in It\^o differential form rather than time-derivative form. 
+
+A first-order Taylor expansion is applied to the deterministic drift term $f(x(t), u(t), d(t), p) \, dt$ around the nominal operating point $(x_s, u_s, d_s)$, while the diffusion matrix $\sigma(x(t), u(t), d(t), p)$ is evaluated at the stationary equilibrium to obtain a constant matrix $G_\omega = \sigma(x_s, u_s, d_s, p)$. Since the stochastic disturbances enter the mass balances of Tank 3 and Tank 4 linearly, the diffusion term is state-independent, meaning $G_\omega = G_d \sigma_d$ (where $\sigma_d$ scales the intensity of the Wiener process) is exact. The resulting linearized continuous-time SDE system is:
+\begin{align}
+    dX(t) &= \left( A X(t) + B U(t) + G_d D(t) \right) dt + G_\omega \, d\omega(t) \\
+    Y(t) &= C X(t) + v(t), \quad v(t) \sim \mathcal{N}(0, R_{vv}(p)) \\
+    Z(t) &= C_z X(t)
+\end{align}
+If the mean disturbance level is constant at $d(t) = d_s$ and all stochastic variations around $d_s$ are captured by the diffusion term $G_\omega \, d\omega(t)$, the deterministic disturbance deviation vanishes ($D(t) = 0$), simplifying the drift term to $(A X(t) + B U(t)) \, dt$.
+
+\section{Deriving Transfer Functions}
+
+\subsection{Deterministic Model}
+
+In this case, the standard result of $H(s) = (sI - A)^-1 B + D$ can be used. First stack the system inputs then use this formulation to represent the transfer function
+
+\subsection{Zero-Order Hold Model}
+
+Same idea as for the deterministic case
+
+\subsection{Stochastic Differential Equation formulation}
+
+In this case, the standard Laplace transform must be replaced with a stochastic laplace transform- with an equivalent using the Ito Integral. 
