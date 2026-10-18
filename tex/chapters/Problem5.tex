@@ -98,12 +98,38 @@ If the mean disturbance level is constant at $d(t) = d_s$ and all stochastic var
 
 \subsection{Deterministic Model}
 
-In this case, the standard result of $H(s) = (sI - A)^-1 B + D$ can be used. First stack the system inputs then use this formulation to represent the transfer function
+For the deterministic continuous-time linear model, the relation between the system inputs and outputs in the frequency domain is established by combining the state-space matrices into an augmented input matrix. Stating the manipulated input matrix $B$ and the disturbance matrix $G_d$ as a combined block matrix $B^* = \begin{bmatrix} B & G_d \end{bmatrix}$, the state-space equations in deviation variables are expressed as:
+\begin{align}
+    \dot{X}(t) &= A X(t) + B^* U^*(t) \\
+    Y(t) &= C X(t)
+\end{align}
+where $U^*(t) = \begin{bmatrix} U(t)^T & D(t)^T \end{bmatrix}^T$. Applying the Laplace transform under zero initial conditions yields the standard multivariable transfer function matrix:
+\begin{equation}
+    H^*(s) = C(sI - A)^{-1} B^* = \begin{bmatrix} C(sI - A)^{-1} B & C(sI - A)^{-1} G_d \end{bmatrix}
+\end{equation}
+This formulation simultaneously provides the input-to-output transfer functions and the disturbance-to-output response models.
 
 \subsection{Zero-Order Hold Model}
 
-Same idea as for the deterministic case
+The derivation for the zero-order hold (ZOH) formulation follows a similar analytical pathway in discrete time. Given a constant sampling period $T_s$ and inputs held constant over each sampling interval via zero-order hold electronics, the continuous-time linear system is discretized into the state-space representation:
+\begin{align}
+    X_{k+1} &= \bar{A} X_k + \bar{B}^* U^*_k \\
+    Y_k &= C X_k
+\end{align}
+where the discrete-time matrices $\bar{A}$ and $\bar{B}^* = \begin{bmatrix} \bar{B} & \bar{G}_d \end{bmatrix}$ are computed using the matrix exponential via conversion algorithms. Taking the Z transform of the discrete state-space equations yields the discrete transfer function matrix:
+\begin{equation}
+    H^*(z) = C(zI - \bar{A})^{-1} \bar{B}^*
+\end{equation}
+This describes the exact sampled-data frequency response corresponding to the continuous ZOH process.
 
 \subsection{Stochastic Differential Equation formulation}
 
-In this case, the standard Laplace transform must be replaced with a stochastic laplace transform- with an equivalent using the Ito Integral. 
+When the unmeasured disturbances are modeled via stochastic differential equations driven by a Wiener process, the classical deterministic Laplace transform is replaced by a stochastic formulation utilizing Itô integrals. Applying the stochastic chain rule (Itô's lemma) to the product of the deterministic exponential term $e^{-st}$ and the state vector $X_t$, we expand the differential of the product:
+\begin{equation}
+    d\left(e^{-st} X_t\right) = -s e^{-st} X_t \, dt + e^{-st} dX_t
+\end{equation}
+Integrating this expression from time zero to infinity and taking the limit yields the stochastic integration-by-parts rule. Substituting the linear SDE formulation $dX_t = (AX_t + BU_t)dt + G_\omega dW_t$ into the integrated expression results in:
+\begin{equation}
+    (sI - A) X(s) = X_0 + B U(s) + G_\omega \mathcal{W}(s)
+\end{equation}
+where $\mathcal{W}(s) = \int_0^\infty e^{-st} dW_t$ represents the Laplace-transformed Wiener integral. Solving for $X(s)$ and mapping to the outputs provides the frequency-domain representation incorporating both deterministic inputs and the shape-filtered stochastic noise processes.
