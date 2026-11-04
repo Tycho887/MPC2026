@@ -1,0 +1,37 @@
+\chapter{QP Solver Interface}
+\label{chap:problem7}
+
+The purpose of this problem is to implement a general quadratic programming (QP) solver interface using MATLAB's \texttt{quadprog} function. Quadratic programming is an important part of linear Model Predictive Control, where the optimal sequence of control inputs can be obtained by minimizing a quadratic objective function subject to linear constraints.
+
+The optimization problem is formulated as
+\begin{equation}
+    \min_{x \in \mathbb{R}^n}
+    \quad
+    \phi(x) = \frac{1}{2}x^T Hx + g^T x
+    \label{eq:qp_objective}
+\end{equation}
+subject to
+\begin{align}
+    l &\leq x \leq u, \\
+    b_l &\leq Ax \leq b_u.
+\end{align}
+
+Where $H \in \mathbb{R}^{n \times n}$ is the symmetric positive semidefinite Hessian matrix, $g \in \mathbb{R}^n$ is the linear cost vector, and $x$ contains the optimization variables. The vectors $l$ and $u$ specify the lower and upper variable bounds, while $b_l$ and $b_u$ define the linear constraints through the matrix $A$.
+
+For a positive semidefinite $H$, the objective function is convex, making the problem a convex quadratic program.
+
+The solver was implemented in the MATLAB function
+\texttt{qpsolver.m}, with the interface
+\begin{verbatim}
+[x,info] = qpsolver(H,g,l,u,A,bl,bu,xinit)
+\end{verbatim}
+
+\section{Implementation}
+
+The function \texttt{qpsolver.m} uses the interface
+
+\begin{verbatim}
+[x,info] = qpsolver(H,g,l,u,A,bl,bu,xinit)
+\end{verbatim}
+
+
