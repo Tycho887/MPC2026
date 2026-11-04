@@ -65,7 +65,7 @@ The physical parameters used in all experiments are
 
 \section{Stochastic Nonlinear Model}
 
-For piecewise constant disturbances, the dynamics retain the form
+For piecewise constant disturbances, the dynamics retain the  in
 \eqref{eq:p2-drift}, but
 \begin{equation}
  d(t)=d_k=\bar d+\eta_k,\qquad t_k\leq t<t_{k+1},\qquad
@@ -166,10 +166,18 @@ does not make them share the same noise realization.
 
 \subsection{Open-loop results}
 
+Figures~\ref{fig:p2-deterministic}--\ref{fig:p2-sde} show filling from the
+empty initial state and the responses to the two pump steps. Increasing
+$F_1$ raises tank 1 through its direct inflow and tank 2 through tank 4.
+Decreasing $F_2$ lowers tank 2 directly and tank 1 through tank 3.
+The indirect paths include an additional tank and produce a slower response.
+In the stochastic runs, the lower tanks smooth the upper-tank disturbances,
+while measurement noise produces scatter around the true outputs.
+
 \begingroup
 \newcommand{\pTwoFigure}[1]{%
  \includegraphics[width=\linewidth]{tex/chapters/results/problem02/#1.pdf}}
-\begin{figure}[htbp]
+\begin{figure}[H]
  \centering
  \pTwoFigure{open_loop_01}
  \caption{Deterministic open-loop simulation. Pump inputs and constant
@@ -177,7 +185,7 @@ does not make them share the same noise realization.
  measurement noise, $y_i=z_i$.}
  \label{fig:p2-deterministic}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
  \centering
  \pTwoFigure{open_loop_02}
  \caption{Open-loop simulation with Gaussian disturbance flows held for
@@ -185,7 +193,7 @@ does not make them share the same noise realization.
  show true levels; the points $y_i$ are noisy observations.}
  \label{fig:p2-held}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
  \centering
  \pTwoFigure{open_loop_03}
  \caption{SDE open-loop simulation with $0.1\ \mathrm{s}$ integration steps.
@@ -196,19 +204,17 @@ does not make them share the same noise realization.
 \end{figure}
 \endgroup
 
-Figures~\ref{fig:p2-deterministic}--\ref{fig:p2-sde} show filling from the
-empty initial state and the responses to the two pump steps. Increasing
-$F_1$ raises tank 1 through its direct inflow and tank 2 through tank 4.
-Decreasing $F_2$ lowers tank 2 directly and tank 1 through tank 3.
-The indirect paths include an additional tank and produce a slower response.
-In the stochastic runs, the lower tanks smooth the upper-tank disturbances,
-while measurement noise produces scatter around the true outputs.
 
 Table~\ref{tab:p2-results} reports the final true levels and empirical
 root-mean-square measurement errors, computed as
-$\sqrt{N^{-1}\sum_{k=1}^N(y_{i,k}-z_{i,k})^2}$ from
-\texttt{results/open\_loop.mat}.
-\begin{table}[htbp]
+
+\begin{align}
+    \sqrt{N^{-1}\sum_{k=1}^N(y_{i,k}-z_{i,k})^2}
+\end{align}
+
+from \texttt{results/open\_loop.mat}.
+
+\begin{table}[H]
  \centering
  \caption{Final levels at $1200\ \mathrm{s}$ and measurement-error RMS,
  all in centimetres. Each stochastic result is a single realization.}
@@ -243,4 +249,4 @@ model behaviour; they do not establish ensemble means, confidence
 intervals, or numerical convergence of the SDE discretization.
 
 
-testing
+

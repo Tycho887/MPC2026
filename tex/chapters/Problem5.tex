@@ -1,6 +1,7 @@
 \chapter{Linearization and Discretization}
 
 \section{Linearizing Continuous-Time Models}
+\label{sec:5_1}
 
 To obtain linear state-space representations of the Modified Four Tank System, the nonlinear dynamics and output relations are linearized around a stationary operating point $(x_s, u_s, d_s)$. Given the nominal steady-state pump flow rates $u_s = [F_{1s}, F_{2s}]^T$ and nominal disturbance flow rates $d_s = [F_{3s}, F_{4s}]^T$, the steady-state liquid masses $x_s = [m_{1s}, m_{2s}, m_{3s}, m_{4s}]^T$, measurements $y_s$, and controlled outputs $z_s$ satisfy the equilibrium conditions:
 \begin{align}
@@ -14,7 +15,7 @@ Deviation variables describing perturbations around this equilibrium are defined
     Y(t) &= y(t) - y_s, & Z(t) &= z(t) - z_s
 \end{align}
 
-\subsection{Deterministic Model}
+\subsection{Deterministic Model} \label{sec:5_1}
 
 In the deterministic formulation, the nonlinearity arises from Bernoulli's law in the gravity-driven tank outflows, $q_i = a_i \sqrt{2 g h_i}$. This nonlinear height term is approximated by taking a first-order Taylor series expansion of $f(x(t), u(t), d(t), p)$, $g(x(t), p)$, and $h(x(t), p)$ around the steady-state operating point $(x_s, u_s, d_s)$:
 \begin{align}
