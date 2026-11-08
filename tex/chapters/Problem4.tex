@@ -58,7 +58,9 @@ For measured data, the baseline \(\widehat h_{i,0}\) is the mean measurement ove
 \[
 \widehat S_{ij}=(y_i-\widehat h_{i,0})/\Delta F_j.
 \]
-This gives units of \(\mathrm{cm/(cm^3/s)}\), i.e.\ response per unit pump increment; it does not rescale each response to unit final value. For an LTI plant, normalized responses to different step amplitudes would coincide.
+The result is the response per unit pump increment in
+\(\mathrm{cm/(cm^3/s)}\); it is not rescaled to unit final value. For an LTI
+plant, normalized responses to different step amplitudes would coincide.
 
 Figures~\ref{fig:p4-normdet1}--\ref{fig:p4-normstoch2} show normalized responses for every pump, amplitude, and noise level. The deterministic curves do not collapse: larger positive steps give larger normalized steady gains. This follows from the equilibrium relation \(h_i=q_i^2/(2ga_i^2)\). For a lower-tank outlet-flow increment \(\Delta q_i=\beta_{ij}\Delta F_j\), with
 \begin{equation}
@@ -93,7 +95,7 @@ For fixed sensor noise, division by a larger step reduces normalized measurement
 \[
 \operatorname{SD}(v_i/\Delta F_j)=\sigma_y/\Delta F_j.
 \]
-At medium noise this is \(0.0167\), \(0.00667\), and \(0.00333\ \mathrm{cm/(cm^3/s)}\) for \(10\%\), \(25\%\), and \(50\%\) steps, respectively. Thus larger excitation improves the signal relative to measurement noise but increases the departure from a local linear model.
+At medium noise this is \(0.0167\), \(0.00667\), and \(0.00333\ \mathrm{cm/(cm^3/s)}\) for \(10\%\), \(25\%\), and \(50\%\) steps, respectively. Larger excitation therefore improves the signal relative to measurement noise but increases the departure from a local linear model.
 
 \section{Transfer Function Identification}
 \label{sec:4_4}
@@ -107,27 +109,22 @@ or explicit delay and take the forms
  \widehat G_{ij}(s)=\frac{K_{ij}}{(1+\tau_{ij,1}s)(1+\tau_{ij,2}s)},\quad i\ne j.
 \end{equation}
 Identification uses separate 25\% pump steps, with medium process and
-sensor noise, and seeds 101 and 102 for the two pump experiments.
-Each measured baseline is estimated over the last 50 seconds before the
+sensor noise, and seeds 101 and 102 for the two pump experiments; each
+measured baseline is estimated over the last 50 seconds before the
 step. The normalized records are decimated from $0.1$ to $1\ \mathrm{s}$
-sampling by selecting every tenth observation. This reduces data volume;
-it is not averaging or an anti-aliasing filter.
+sampling by selecting every tenth observation.
 
-The reported run uses the continuous-time least-squares backend.
-For elapsed time $\tau\geq0$, its analytical unit-step models are
+The continuous-time least-squares backend fits the analytical unit-step
+responses of the one- and two-pole channels,
 \begin{align}
  s_1(\tau)&=K(1-e^{-\tau/T}),\\
  s_2(\tau)&=K\left[1-
- \frac{T_1e^{-\tau/T_1}-T_2e^{-\tau/T_2}}{T_1-T_2}\right].
+ \frac{T_1e^{-\tau/T_1}-T_2e^{-\tau/T_2}}{T_1-T_2}\right],
 \end{align}
-When $T_1=T_2=T$, the second expression has limit
-$K[1-(1+\tau/T)e^{-\tau/T}]$.
-MATLAB's \texttt{fminsearch} minimizes the sum of squared differences
-between measured normalized post-step samples and these analytical
-responses, with time constants bounded below by $0.01\ \mathrm{s}$ in
-the objective evaluation. The code can alternatively use \texttt{tfest}
-when System Identification Toolbox is available; its numerical estimates
-may differ from those reported here.
+to the measured normalized post-step samples by minimising the sum of
+squared differences with \texttt{fminsearch}. The code can alternatively
+use \texttt{tfest} when the System Identification Toolbox is available;
+its numerical estimates may differ from those reported here.
 
 The resulting continuous-time estimate is
 \begin{equation}
@@ -148,15 +145,9 @@ noisy normalized observations from the identification experiments.
 \section{Accuracy of the Identified Transfer Function}
 
 The gains in \eqref{eq:p4-identified} are close to the deterministic
-25\% finite-step gains in Table~\ref{tab:p4-gains}. They represent an
-approximation over that excursion, rather than the infinitesimal gain
-at the initial equilibrium. The initial tank time constants are
-$[74.6163,90.0541,28.3027,36.0216]^T\ \mathrm{s}$.
-These explain the physical channel orders, but fitted time constants can
-differ because outlet sensitivities change during a finite step and
-process noise affects the observed response. The two cross-channel pole
-time constants are unordered fit parameters; a fit does not uniquely
-assign each pole to a particular physical tank.
+25\% finite-step gains in Table~\ref{tab:p4-gains}: they approximate
+that excursion rather than the infinitesimal gain at the initial
+equilibrium.
 
 To separate fit quality from generalization, the same model is evaluated
 against the separate deterministic 10\%, 25\%, and 50\% experiments.
@@ -186,7 +177,7 @@ grid. Table~\ref{tab:p4-validation} reports the errors.
  \end{tabular}
 \end{table}
 For context, comparison against the true trajectories of the identification
-runs gives normalized RMSE between $0.0010$ and $0.0012$. That is a
+runs gives normalized RMSE between $0.0010$ and $0.0012$; that is a
 comparison on the fitting experiments, not independent validation.
 The larger deterministic validation errors at 50\% show the limits of
 using one linear model across different amplitudes. At 25\%, multiplying
@@ -200,7 +191,7 @@ Separate input steps isolate columns of the transfer matrix. Sampling
 must resolve the fastest relevant dynamics, and model order should reflect
 physical knowledge without adding unsupported parameters. Repeated runs
 or separate noisy validation records would be needed to assess uncertainty
-and robustness to new disturbance realizations. These results demonstrate
+and robustness to new disturbance realizations; these results demonstrate
 finite-step fit accuracy, without providing parameter confidence intervals.
 
 \section{Markov Parameters}
@@ -232,9 +223,9 @@ Figure~\ref{fig:p4-markov} shows 60 matrices, $H_0$ through $H_{59}$,
 corresponding to $0$--$236\ \mathrm{s}$. Direct-channel coefficients
 are largest early and decay, while cross-channel coefficients build up
 before decaying because of the upper-tank lag. These are discrete
-coefficients for a unit input applied for one sample. MATLAB's
-unit-area impulse convention scales the discrete response by $1/T_s$;
-that scaling is not used in \eqref{eq:p4-markov}.
+coefficients for a unit input held for one sample; MATLAB's unit-area
+impulse convention, which scales the response by $1/T_s$, is not used in
+\eqref{eq:p4-markov}.
 
 For stable models, the infinite coefficient sum equals the static gain:
 \begin{equation}
@@ -242,10 +233,10 @@ For stable models, the infinite coefficient sum equals the static gain:
 \end{equation}
 The plotted finite horizon omits approximately
 $\begin{bmatrix}6.0&8.7\\16.5&9.7\end{bmatrix}\%$
-of the respective channel gains. Thus 60 coefficients illustrate the
-impulse-response shapes but do not capture the entire slow response.
-A longer horizon would be needed if these coefficients were used to
-approximate settled outputs in a finite convolution model.
+of the respective channel gains. Sixty coefficients therefore illustrate
+the impulse-response shapes but do not capture the entire slow response;
+a longer horizon would be needed to approximate settled outputs by finite
+convolution.
 
 % All figures are committed report snapshots; MATLAB is not needed to build.
 \begingroup
