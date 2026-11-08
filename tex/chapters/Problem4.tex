@@ -5,46 +5,30 @@
 
 \section{Simulate Step Response}
 
-Step experiments characterize how each manipulated pump flow affects the
-two measured lower-tank levels. All experiments use the nonlinear mass
-balances and physical parameters of Chapter~\ref{chap:problem2}. The
-initial condition is the equilibrium for
-\begin{equation}
- u_s=[300,300]^T\ \mathrm{cm^3/s},\qquad
- \bar d=[20,20]^T\ \mathrm{cm^3/s},\qquad
- h_s=[28.4621,41.4578,4.0950,6.6332]^T\ \mathrm{cm}.
-\end{equation}
-Starting at equilibrium separates the input-step response from a tank-filling
-transient. Pump $j$ is stepped in a separate experiment, while the other
-pump remains at its nominal flow:
-\begin{equation}
- u(t)=u_s+e_j\Delta F_j\,\mathbf{1}_{t\geq200},\qquad
- \Delta F_j=\alpha F_{j,s},\qquad \alpha\in\{0.10,0.25,0.50\}.
-\end{equation}
-Here $e_j$ is the $j$th unit vector. The increments are $30$, $75$, and
-$150\ \mathrm{cm^3/s}$, giving final pump flows of $330$, $375$, and
-$450\ \mathrm{cm^3/s}$. Each experiment ends at $1200\ \mathrm{s}$,
-providing $1000\ \mathrm{s}$ after the step.
-
-In the deterministic case, disturbances remain at $\bar d$ and measurement
-noise is zero. MATLAB's \texttt{ode15s} integrates the intervals before and
-after the step separately. Figures~\ref{fig:p4-det1} and
-\ref{fig:p4-det2} show the resulting levels and pump inputs.
-The direct paths $F_1\to h_1$ and $F_2\to h_2$ respond faster than the
-indirect paths through the upper tanks. All positive steps increase both
-lower-tank levels, consistent with the positive inflow routing.
+We perform step experiments in which the steady-state flow of one pump is increased by \(10\%\), \(25\%\), or \(50\%\). The initial condition is the equilibrium
+\[
+u_s=[300,300]^T\ \mathrm{cm^3/s},\qquad
+\bar d=[20,20]^T\ \mathrm{cm^3/s},\qquad
+h_s=[28.4621,41.4578,4.0950,6.6332]^T\ \mathrm{cm}.
+\]
+For pump \(j\),
+\[
+u_j(t)=u_{j,s}\bigl(1+\alpha\,\mathbf 1_{t\ge 200}\bigr),\qquad
+u_k(t)=u_{k,s}\quad(k\ne j),\qquad
+\alpha\in\{0.10,0.25,0.50\}.
+\]
+The increments are \(30\), \(75\), and \(150\ \mathrm{cm^3/s}\), giving final pump flows of \(330\), \(375\), and \(450\ \mathrm{cm^3/s}\). Each experiment ends at \(1200\ \mathrm{s}\). In the deterministic case, disturbances remain at \(\bar d\) and measurement noise is zero. Figures~\ref{fig:p4-det1} and~\ref{fig:p4-det2} show the resulting levels and pump inputs. The direct paths \(F_1\to h_1\) and \(F_2\to h_2\) respond faster than the indirect paths through the upper tanks, and all positive steps increase both lower-tank levels.
 
 \section{Simulate Step Response with Varying Noise Levels}
 
-The stochastic experiments use the additive SDE from
-Chapter~\ref{chap:problem2}:
-\begin{equation}
- dx=f(x,u,\bar d,p)\,dt+\rho D\operatorname{diag}(s_3,s_4)\,dW,
- \qquad y_k=Cx_k+v_k,\quad v_k\sim\mathcal N(0,\sigma_y^2 I_2).
-\end{equation}
-Process disturbances enter the upper tanks directly, while sensor noise
-is added to the lower-tank level observations. Low, medium, and high noise
-scale both diffusion intensity and measurement standard deviation:
+The stochastic experiments use the additive SDE from Chapter~\ref{chap:problem2},
+\[
+dx=f(x,u,\bar d,p)\,dt+\rho D\operatorname{diag}(s_3,s_4)\,dW,
+\qquad
+y_k=Cx_k+v_k,\quad v_k\sim\mathcal N(0,\sigma_y^2 I_2),
+\]
+with process noise entering the upper tanks and measurement noise added to the lower-tank level observations. Low, medium, and high noise settings scale both the diffusion intensity and the measurement standard deviation as shown in Table~\ref{tab:p4-noise}.
+
 \begin{table}[htbp]
  \centering
  \caption{Noise settings for the stochastic step experiments.}
@@ -59,75 +43,57 @@ scale both diffusion intensity and measurement standard deviation:
  \hline
  \end{tabular}
 \end{table}
-The state update is projected Euler--Maruyama with $\Delta t=0.1\ \mathrm{s}$,
-using independent Brownian increments with covariance $\Delta t I_2$.
-A single standardized process and measurement realization, generated with
-seed 100, is reused across all step sizes and noise scales. This controls
-random variation when comparing settings, but these runs are correlated
-experiments rather than independent repetitions. Measurements are simulated
-every $0.1\ \mathrm{s}$; the plots display them every $1\ \mathrm{s}$.
-Figures~\ref{fig:p4-stoch1} and \ref{fig:p4-stoch2} distinguish true level
-curves from measured level points. Increased noise causes greater measurement
-scatter, while upper- and lower-tank dynamics smooth the process disturbances.
+
+We integrate the SDE with Euler--Maruyama using $\Delta t=0.1\ \mathrm{s}$. A single standardized noise realization generated with seed 100 is reused across all step sizes and noise levels. Measurements are simulated every $0.1\ \mathrm{s}$ and plotted every $1\ \mathrm{s}$. Figures~\ref{fig:p4-stoch1} and~\ref{fig:p4-stoch2} show the true and measured levels.
 
 \section{Normalized Step Responses}
 
-For input $j$ and output $i$, define the normalized response
+For input \(j\) and output \(i\), define the normalized response
 \begin{equation}
  S_{ij}(\tau;\Delta F_j)=
  \frac{h_i(200+\tau)-h_{i,s}}{\Delta F_j},\qquad \tau\geq0.
  \label{eq:p4-normalization}
 \end{equation}
-For measured data, the baseline is estimated from the mean measurement over
-$150\leq t<200\ \mathrm{s}$, giving
-$\widehat S_{ij}=(y_i-\widehat h_{i,0})/\Delta F_j$.
-This normalization gives units of $\mathrm{cm/(cm^3/s)}$ and compares the
-response per unit pump increment. It does not rescale every response to
-unit final value. For an LTI plant, normalized responses to different
-step amplitudes would coincide.
+For measured data, the baseline \(\widehat h_{i,0}\) is the mean measurement over \(150\leq t<200\ \mathrm{s}\), so
+\[
+\widehat S_{ij}=(y_i-\widehat h_{i,0})/\Delta F_j.
+\]
+This gives units of \(\mathrm{cm/(cm^3/s)}\), i.e.\ response per unit pump increment; it does not rescale each response to unit final value. For an LTI plant, normalized responses to different step amplitudes would coincide.
 
-Figures~\ref{fig:p4-normdet1}--\ref{fig:p4-normstoch2} plot normalized
-responses for every pump, amplitude, and noise level. The deterministic
-curves do not collapse: larger positive steps give greater normalized
-steady gains. This follows directly from the equilibrium relation
-$h_i=q_i^2/(2ga_i^2)$. For a lower-tank outlet flow increment
-$\Delta q_i=\beta_{ij}\Delta F_j$, with
+Figures~\ref{fig:p4-normdet1}--\ref{fig:p4-normstoch2} show normalized responses for every pump, amplitude, and noise level. The deterministic curves do not collapse: larger positive steps give larger normalized steady gains. This follows from the equilibrium relation \(h_i=q_i^2/(2ga_i^2)\). For a lower-tank outlet-flow increment \(\Delta q_i=\beta_{ij}\Delta F_j\), with
 \begin{equation}
  [\beta_{ij}]=\begin{bmatrix}0.6&0.3\\0.4&0.7\end{bmatrix},
 \end{equation}
-the exact finite-step equilibrium gain is
+the finite-step equilibrium gain is
 \begin{equation}
  \frac{\Delta h_i^*}{\Delta F_j}
  =\frac{q_{i,s}\beta_{ij}}{ga_i^2}
   +\frac{\beta_{ij}^2\Delta F_j}{2ga_i^2}.
  \label{eq:p4-secant}
 \end{equation}
-The first term is the local linearized gain. The second term explains the
-amplitude dependence of positive step tests.
+The first term is the local linearized gain; the second explains the amplitude dependence of positive step tests.
 
 \begin{table}[htbp]
  \centering
- \caption{Deterministic normalized levels at $1200\ \mathrm{s}$ and local
- linearized gains. All entries are in $\mathrm{cm/(cm^3/s)}$. The final
- levels approximate equilibrium; a small settling residual remains.}
+ \caption{Deterministic normalized levels at \(1200\ \mathrm{s}\) and local linearized gains. All entries are in \(\mathrm{cm/(cm^3/s)}\). Final levels approximate equilibrium; a small settling residual remains.}
  \label{tab:p4-gains}
  \begin{tabular}{lrrrr}
  \hline
  Channel & Local gain & 10\% step & 25\% step & 50\% step\\
  \hline
- $F_1\to h_1$ & 0.11777 & 0.1214 & 0.1269 & 0.1360\\
- $F_2\to h_1$ & 0.05889 & 0.0598 & 0.0612 & 0.0635\\
- $F_1\to h_2$ & 0.09476 & 0.0964 & 0.0988 & 0.1029\\
- $F_2\to h_2$ & 0.16583 & 0.1708 & 0.1782 & 0.1907\\
+ \(F_1\to h_1\) & 0.11777 & 0.1214 & 0.1269 & 0.1360\\
+ \(F_2\to h_1\) & 0.05889 & 0.0598 & 0.0612 & 0.0635\\
+ \(F_1\to h_2\) & 0.09476 & 0.0964 & 0.0988 & 0.1029\\
+ \(F_2\to h_2\) & 0.16583 & 0.1708 & 0.1782 & 0.1907\\
  \hline
  \end{tabular}
 \end{table}
-For fixed sensor noise, division by a larger step reduces normalized
-measurement scatter: $\operatorname{SD}(v_i/\Delta F_j)=\sigma_y/\Delta F_j$.
-At medium noise this is $0.0167$, $0.00667$, and $0.00333$
-$\mathrm{cm/(cm^3/s)}$ for 10\%, 25\%, and 50\% steps, respectively.
-Thus increasing excitation improves the signal relative to measurement
-noise while increasing the departure from a local linear model.
+
+For fixed sensor noise, division by a larger step reduces normalized measurement scatter:
+\[
+\operatorname{SD}(v_i/\Delta F_j)=\sigma_y/\Delta F_j.
+\]
+At medium noise this is \(0.0167\), \(0.00667\), and \(0.00333\ \mathrm{cm/(cm^3/s)}\) for \(10\%\), \(25\%\), and \(50\%\) steps, respectively. Thus larger excitation improves the signal relative to measurement noise but increases the departure from a local linear model.
 
 \section{Transfer Function Identification}
 \label{sec:4_4}
