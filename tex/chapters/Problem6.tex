@@ -24,7 +24,7 @@ with
 
 Here $u_k = [F_1 \; F_2]^T$ are the manipulated variables, $y_k = [h_1 \; h_2]_k^T$ are the measured variables and $z_k = [h_1 \; h_2]_k^T$ are the controlled variables, while the unmeasured flows $F_3$ and $F_4$ (the disturbances) are represented through the process noise $w_k$.\\
 
-In this section, the identified transfer function model from Problem 4 and the continuous-time linearized models from Problem 5 are converted to discrete-time linear models. All the linear models are expressed in deviation variables around the operating point presented in Section \ref{sec:5_1}. The operating point is \textbf{[TODO]} and the sampling time is $T_s=\textbf{[TODO]}$~s. Zero-order hold is assumed for the pump flows, meaning that they are piecewise constant over each sampling interval, $u(t)=u_k$ for $t_k\le t<t_{k+1}=t_k+T_s$. The same holds for the disturbances $d(t)=d_k$ in the deterministic and the ZOH models, whereas the disturbances of the SDE model act continuously.
+In this section, the identified transfer function model from Problem 4 and the continuous-time linearized models from Problem 5 are converted to discrete-time linear models. All the linear models are expressed in deviation variables around the operating point presented in Section \ref{sec:5_1}. Zero-order hold is assumed for the pump flows, meaning that they are piecewise constant over each sampling interval, $u(t)=u_k$ for $t_k\le t<t_{k+1}=t_k+T_s$. The same holds for the disturbances $d(t)=d_k$ in the deterministic and the ZOH models, whereas the disturbances of the SDE model act continuously.
 
 \subsection{Problem 4 models}
 
@@ -180,7 +180,7 @@ Subsequently, for the ZOH model the flows $F_3$ and $F_4$ are over each sample d
   x_{k+1} = Ax_k + Bu_k + Ew_k, \qquad G = E, \qquad R_{ww} = Q_d,
 \end{align}
 
-with $\sigma_{F_3}=\sigma_{F_4}=\textbf{[TODO]}$~cm$^3$/s. Lastly, for the SDE model the disturbances are modeled using a Wiener process, adding directly to the mass balances of tank 3 and tank 4,
+Lastly, for the SDE model the disturbances are modeled using a Wiener process, adding directly to the mass balances of tank 3 and tank 4,
 
 \begin{align}
   \mathrm{d}x = (A_cx + B_cu)\,\mathrm{d}t + \Sigma\,\mathrm{d}W, \qquad
@@ -188,7 +188,7 @@ with $\sigma_{F_3}=\sigma_{F_4}=\textbf{[TODO]}$~cm$^3$/s. Lastly, for the SDE m
          = E_c \begin{bmatrix} s_3 & 0 \\ 0 & s_4 \end{bmatrix},
 \end{align}
 
-with $s_3=s_4=\textbf{[TODO]}$~cm$^3$/s$^{1/2}$ and $D$ selecting tanks 3 and 4. Here, the mean disturbance is zero in the deviation variables, and $\Sigma$ does not change during the linearization, as it does not depend on the state. The full solution is therefore the same as before, but now with an added stochastic integral,
+with $s_3=s_4$ and $D$ selecting tanks 3 and 4. Here, the mean disturbance is zero in the deviation variables, and $\Sigma$ does not change during the linearization, as it does not depend on the state. The full solution is therefore the same as before, but now with an added stochastic integral,
 
 \begin{align}
   x_{k+1} = Ax_k + Bu_k + w_k, \qquad
@@ -225,7 +225,7 @@ meaning that $G=I$ and $R_{ww} = \overline{Q}$. Finally, the measurements are th
   y_k = Cx_k + v_k, \qquad v_k \sim N(0,R_{vv}), \qquad R_{vv} = \sigma^2_v I, \qquad R_{wv} = 0,
 \end{align}
 
-where $C=C_z$ and $\sigma_v=\textbf{[TODO]}$~cm. The sensor noise is independent of the disturbance flows, so the cross-covariance is zero, and this holds for all three models from Problem 5.
+The sensor noise is independent of the disturbance flows, so the cross-covariance is zero, and this holds for all three models from Problem 5.
 
 % Chapter 4 dealt with nonlinear models, and chapter 5 attempted to linearize them.
 
@@ -255,106 +255,191 @@ where $C=C_z$ and $\sigma_v=\textbf{[TODO]}$~cm. The sensor noise is independent
 
 % For the nonlinear case, the system can still be modeled as a system of ODEs, the EKF then represents a step of a multivariate Euler integrator based on the Jacobian of the nonlinear STM.
 
-\section{Dynamic and Static Kalman filters}
 
-In this section, a static and a dynamic Kalman filter are designed for the identified linear models form Problem 4 and Problem 5. The static Kalman filter uses a constant gain from the stationary solution, while the dynamic Kalman filter recomputes the gain at every sample. For this case, the unknown disturbance flows $F_3$ and $F_4$ are implemented as stochastic variables without a step change. \\
+\section{Dynamic and Static Kalman Filters}
+\label{sec:6_2}
 
-The Kalman filters is designed for the discrete-time models derived in the previous Section \ref{sec:6_1}
+In this section, a static and a dynamic Kalman filter are designed for the identified linear model from Problem 4 and the linearized models from Problem 5. The static Kalman filter uses a constant gain from the stationary solution, while the dynamic Kalman filter recomputes the gain at every sample. In this case, the unknown disturbance flows $F_3$ and $F_4$ are implemented as stochastic variables without step changes.\\
+
+The Kalman filters are designed for the discrete-time models derived in Section \ref{sec:6_1},
 
 \begin{align}
-    x_{k+1} = Ax_k + Bu_k + Gw_k, \quad y_k = C_kx_k + v_k, \quad z_k = C_zx_k
+  x_{k+1} = Ax_k + Bu_k + Gw_k, \qquad y_k = Cx_k + v_k, \qquad z_k = C_zx_k,
 \end{align}
 
-with the initial state $x_0 = N(\overline{x}_0, P_0)$ and the noise $w_k \sim N(0,Q)$ and $v_k \sim N(0, R)$. Since the process noise is independent of each other and the starting point $x_0$, $S = cov(w_k, v_k) = 0$. Here $y = [h_1, h_2]^T$ are the measured levels and $R = \sigma^2_v I$. Relating the notions to the previous Section \ref{sec:6_1}, the same covariances where called $R_{ww} = Q$, $R_{vv} = R$ and $R_{wv} = S$. Moving in to the individual models from Problem 4 and Problem 5, the deterministic model form Problem 5 has $G = 0$ and therefore no process noise to estimate, as a consequence there is no filter needed to be designed for this model. The rest of the models where Kalman filter is designed for is presented in Table \ref{tab:6_2}.
+with the initial state $x_0\sim N(\bar x_0,P_0)$ and the noise sequences $w_k\sim N_{iid}(0,Q)$ and $v_k\sim N_{iid}(0,R)$. The process noise and the measurement noise are independent of each other and of $x_0$, so $S=\mathrm{Cov}(w_k,v_k)=0$. Here $y_k=[h_1\;h_2]^T_k$ are the measured levels and $R=\sigma_v^2I$. The same covariances were called $R_{ww}=Q$, $R_{vv}=R$ and $R_{wv}=S$ in Section \ref{sec:6_1}. The deterministic model from Problem 5 has $G=0$ and therefore no process noise to estimate, so no filter is designed for it. The models for which a Kalman filter is designed are listed in Table \ref{tab:6_2}.
 
-\begin{table}[]
-    \centering
-    \begin{tabular}{c|c|c}
-        Model & $G$ & $Q$ \\
-        \hline
-        Problem 5 - ZOH & $E$ & diag($\sigma^2_{F_3}, \sigma^2_{F_4}$) \\
-        Problem 5 - SDE & $I$ & $\overline{Q}$ \\
-        Problem 2 - ZOH & $E_B$ & diag($\sigma^2_{F_3}, \sigma^2_{F_4}$) \\
-        Problem 2 - SDE & $I$ & $\overline{Q}_B$
-    \end{tabular}
-    \caption{Models that Kalman filter is designed for}
-    \label{tab:6_2}
+\begin{table}[ht]
+  \centering
+  \begin{tabular}{lcc}
+    \hline
+    Model & $G$ & $Q$ \\
+    \hline
+    Problem 5, ZOH & $E$ & $\mathrm{diag}(\sigma_{F_3}^2,\sigma_{F_4}^2)$ \\
+    Problem 5, SDE & $I$ & $\bar Q$ \\
+    Problem 4, ZOH & $E_B$ & $\mathrm{diag}(\sigma_{F_3}^2,\sigma_{F_4}^2)$ \\
+    Problem 4, SDE & $I$ & $\bar Q_B$ \\
+    \hline
+  \end{tabular}
+  \caption{Models for which a Kalman filter is designed.}
+  \label{tab:6_2}
 \end{table}
-
 
 \subsection{Disturbance models}
 
-For the Problem 5 models the disturbance models are modeled form physics, meaning that the unknown flows $F_3$ and $F_4$ enters tank 3 and tank 4 respectively, either as a random value held constant over the sample (ZOH) or as a Wiener process directly into the mass balances (SDE). In contrast, for Problem 4 the pump floes are varied in step responses with the disturbance enrty being an assumption and no distirbance path is therefore defined. This means that for the Problem 4 models, the flow $F_3$ enters tank 3 with a gain = 1, whereas $F_2$ then enters tank 2 with a gain $= (1 - \gamma_2$ leading to a transfer function for $F_3 \rightarrow h_1$ being $G_{12}(s)/(1-\gamma_2)$. Same logic can be applied to $F_4 \rightarrow h_2$ yielding the transfer function $G_{21}(s)/(1-\gamma_1)$. This means that 
+For the Problem 5 models, the disturbance models follow from the physics: the unknown flows $F_3$ and $F_4$ enter tank 3 and tank 4, respectively, either as a random value held constant over the sample (ZOH) or as a Wiener process directly in the mass balances (SDE). For the Problem 4 model, only the pump flows were varied in the step responses, so the identified model has no disturbance path and the disturbance entry is an assumption. The flow $F_3$ enters tank 3 with gain 1, whereas $F_2$ enters tank 3 with gain $1-\gamma_2$, so the transfer function from $F_3$ to $h_1$ is $G_{12}(s)/(1-\gamma_2)$. The same logic gives $G_{21}(s)/(1-\gamma_1)$ from $F_4$ to $h_2$. In the realization of Section \ref{sec:6_1} this means
 
 \begin{align}
-    B_d = \begin{bmatrix}
-        0 & 0 \\
-        \frac{1}{1-\gamma_2}B_{c,12} & 0 \\
-        0 & \frac{1}{1-\gamma_1}B_{c,21} \\
-        0 & 0 
+  B_d = \begin{bmatrix}
+    0 & 0 \\
+    \dfrac{1}{1-\gamma_2}B_{c,12} & 0 \\
+    0 & \dfrac{1}{1-\gamma_1}B_{c,21} \\
+    0 & 0
+  \end{bmatrix},
+\end{align}
+
+and a zero-order hold of $[B_c\;\;B_d]$ gives $B$ and the discrete disturbance matrix $E_B$, which is used as $G$ in the ZOH model. For the SDE model, $\Sigma_B=B_d\,\mathrm{diag}(s_3,s_4)$ is used with the Van Loan method, giving $G=I$ and $Q=\bar Q_B$. This choice relies on the known valve positions $\gamma_1$ and $\gamma_2$, and on the identified $G_{12}$ and $G_{21}$ being accurate.\\
+
+In all cases, the disturbances are modeled as white noise with zero mean, which is the assumption for the case without step changes. The ZOH and SDE models do not have the same disturbance intensity: a held flow with standard deviation $\sigma_F$ adds a variance of order $\sigma_F^2T_s^2$ per sample, whereas the SDE adds a variance of order $s^2T_s$. 
+
+\subsection{Dynamic Kalman filter}
+
+Let $\hat x_{k|k-1}$ denote the estimate of $x_k$ based on the measurements up to sample $k-1$ (the prediction), with error covariance $P_{k|k-1}$, and let $\hat x_{k|k}$ and $P_{k|k}$ be the estimate and its covariance after the measurement $y_k$ has been used (the filtered estimate). The dynamic Kalman filter alternates between a measurement update and a time update.\\
+
+In the measurement update, the difference between the measured and the predicted levels is the innovation $e_k$, and $R_{e,k}$ is its covariance, which consists of the uncertainty of the predicted levels and the sensor noise,
+
+\begin{align}
+  e_k &= y_k-C\hat x_{k|k-1}, & R_{e,k} &= CP_{k|k-1}C'+R .
+\end{align}
+
+The gains for the state and for the process noise are
+
+
+\begin{align}
+  K_{fx,k} &= P_{k|k-1}C'R_{e,k}^{-1}, & K_{fw,k} &= SR_{e,k}^{-1},
+\end{align}
+
+which give the filtered estimates and their covariances
+
+\begin{align}
+  \hat x_{k|k} &= \hat x_{k|k-1}+K_{fx,k}e_k, & P_{k|k} &= P_{k|k-1}-K_{fx,k}R_{e,k}K_{fx,k}', \\
+  \hat w_{k|k} &= K_{fw,k}e_k, & Q_{k|k} &= Q-K_{fw,k}R_{e,k}K_{fw,k}' .
+\end{align}
+
+In the time update, the estimate is moved one sample forward with the model, using the known input $u_k$,
+
+\begin{align}
+  \hat x_{k+1|k} &= A\hat x_{k|k}+Bu_k+G\hat w_{k|k}, \\
+  P_{k+1|k} &= AP_{k|k}A'+GQ_{k|k}G'-AK_{fx,k}S'G'-GSK_{fx,k}'A' .
+\end{align}
+
+The last two terms of $P_{k+1|k}$ correct for correlation between the process noise and the sensor noise. Here the two noises are independent, $S=0$, so $K_{fw,k}=0$, $\hat w_{k|k}=0$ and $Q_{k|k}=Q$, and the time update reduces to
+
+\begin{align}
+  \hat x_{k+1|k} &= A\hat x_{k|k}+Bu_k, & P_{k+1|k} &= AP_{k|k}A'+GQG' .
+\end{align}
+
+The filter is initialized with the mean and covariance of the initial state, $\hat x_{0|-1}=\bar x_0=0$ and $P_{0|-1}=P_0$.
+
+\subsection{Static Kalman filter}
+
+The covariance recursion of the dynamic filter does not depend on the measured data or on the input. Inserting $P_{k|k}$, $Q_{k|k}$ and the cross terms of the time update, and using $K_{fx,k}R_{e,k}=P_{k|k-1}C'$ and $K_{fw,k}R_{e,k}=S$, the prediction covariance satisfies
+
+\begin{equation}
+  P_{k+1|k}=AP_{k|k-1}A'+GQG'-K_{px,k}R_{e,k}K_{px,k}',
+\end{equation}
+
+with $K_{px,k}=AK_{fx,k}+GK_{fw,k}$. Since $K_{px,k}R_{e,k}=AP_{k|k-1}C'+GS=:M_k$, this is
+
+\begin{align}
+  P_{k+1|k}&=AP_{k|k-1}A'+GQG'-M_kR_{e,k}^{-1}M_k', & M_k&=AP_{k|k-1}C'+GS .
+\end{align}
+
+If the prediction covariance converges, $P_{k+1|k}=P_{k|k-1}=P$ for large $k$, then $P$ satisfies the discrete algebraic Riccati equation
+
+\begin{equation}
+  P=APA'+GQG'-(APC'+GS)\big(CPC'+R\big)^{-1}(APC'+GS)' ,
+\end{equation}
+
+which for $S=0$ is
+
+\begin{equation}
+  P=APA'+GQG'-APC'\big(CPC'+R\big)^{-1}CPA' .
+\end{equation}
+
+The constant gains and covariance are
+
+\begin{align}
+  R_e&=CPC'+R, & K_{fx}&=PC'R_e^{-1}, \\
+  K_{fw}&=SR_e^{-1}, & P_f&=P-K_{fx}R_eK_{fx}',
+\end{align}
+
+and the measurement and time updates defined for the dynamic filter are then used with these constant matrices. Combining them gives the one-step predictor form
+
+\begin{equation}
+  \hat x_{k+1|k}=A\hat x_{k|k-1}+Bu_k+K_{px}e_k,\qquad K_{px}=AK_{fx}+GK_{fw},
+\end{equation}
+
+with $K_{px}=AK_{fx}$ for $S=0$. Since the covariances do not depend on the measured data, the gains are computed only once before the simulation. 
+
+\subsection{Kalman filters with step changes}
+
+The Kalman filters should now be implemented in the same way as the previous section, however the steady set offset will be removed and the stochastic variables will now contain step changes. This means that as the disturbance models in Section \ref{sec:6_2} are white noise with zero mean, if the flows then change with a constant step $\delta$ instead, entering the model through $E$, the filter will not know about it. The steady state offset therefore needs to be removed to make the disturbance model detectable. To do this, the models are augmented with integrating disturbance states defined by a random walk
+
+\begin{align}
+    s_{k+1} = s_k + \eta_k, \quad \eta_k \sim N_{iid}(0,Q_s), \quad Q_s = \sigma^2_sI
+\end{align}
+
+The disturbance acts on the states through $B_s$ and on the measurement through $C_s$. Here $B_s = E$ and $C_s = 0$ is used to include $s$ as a persistent part of the flows $F_3$ and $F_4$. Defining
+
+\begin{align}
+    x = \begin{bmatrix}
+        x \\
+        s
+    \end{bmatrix}, \quad w = \begin{bmatrix}
+        w \\
+        \eta
     \end{bmatrix}
 \end{align}
 
-where a zero-order hold of $[B_e \quad B_d]$ gives $B$ and also the discrete disturbance matrix $E_B$. However, for the SDE model $\Sigma_B = B_d \; \mathrm{diag}(s_3, s_4)$ is used leading to $G = I$ and $Q = \overline{Q}_B$.\\
-
-In all cases, the disturbances are modeled as white noise with zero-mean as is the assumption for a case without step changes. The ZOH models and SDE models do not have the same disturbance intensity as the ZOH model with a standard deviation of  $\sigma_F$ adds a variance of $\sigma^2_F T^2_s$, while the SDE model adds a variance of $s^2T_s$.
-
-\subsection{Dynamic Kalman Filter}
-
-For the model defined above, using one-step prediction where $\hat{x}_{k|k-1}$ is the estimate of $x_k$ based on the measurements up to sample $k-1$ (the prediction), with error covariance $P_{k|k-1}$ available at sample $k$. In addition, $x_{k|k}$ and $P_{k|k}$ are the estimate and its covariance after the measurement $y_k$ has been used (the filtered estimate. The dynamic Kalman filter will then alter between doing a measurement update and a time update.\\
-
-Regarding the measurement update, the difference between the measured levels and the predicted levels is defined as the innovation $e_k$ with $R_{e,k}$ as its covariance and consist of the uncertainty of the predicted levels and the sensor noise
+the augmented model can be expressed as
 
 \begin{align}
-    e_k = C \hat{x}_{k|k-1}, \quad R_{e,k} = CP_{k|k-1}C' + R
+    x_{k+1} = Ax_k + Bu_k + Gw_k, \quad y_k = Cx_k + v_k
 \end{align}
 
-The gains for the state and the process noise can be expressed as
+where
 
 \begin{align}
-    K_{fx,k} = P_{k|k-1}C'R_{e,k}^{-1}, \quad K_{fw,k} = SR_{e,k}^{-1}
+    A = \begin{bmatrix}
+        A & B_s \\
+        0 & I
+    \end{bmatrix}, \quad B = \begin{bmatrix}
+        B \\ 0
+    \end{bmatrix}, \quad G = \begin{bmatrix}
+        G & 0 \\
+        0 & I
+    \end{bmatrix}, \quad C = \begin{bmatrix}
+        C & C_s
+    \end{bmatrix}
 \end{align}
 
-which subsequently yields the filtered estimates and their covariances
+Additionally, $S = 0$ and the covariance of $w_k$ is
 
 \begin{align}
-    \hat{x}_{k|k} &= \hat{x}_{k|k-1} + K_{fx,k}e_k, &\quad P_{k|k} = P_{k|k-1} - K_{fx,k}R_{e,k}K'_{fx,k}, \\
-    \hat{w}_{k|k} &= K_{fw,k}e_k, &\quad Q_{k|k} = Q_k - K_{fw,k}R_{e,k}K'_{fw,k}
+    Q = \begin{bmatrix}
+        Q & 0 \\
+        0 & Q_s
+    \end{bmatrix}
 \end{align}
 
-In the time update, the estimate is moved one sample forward with the model using the known input $u_k$
+To achieve offset free estimation, it is assumed that ($C$,$A$) is detectable and that it is possible to stabilize ($A$,$B$). It is also required that he augmented model is detectable, meaning that
 
 \begin{align}
-    \hat{x}_{k+1|1} &= A\hat{x}_{k|k} + Bu_k + G\hat{w}_{k|k} \\
-    \hat{P}_{k+1|k} &= AP_{k|k}A' + GQ_{k|k}G' - A_kK_{fx,k}S'G' - GSK'_{fx,k}A'_k
+    \mathrm{rank}\begin{bmatrix}
+        \lambda I - A & -B_s \\
+        C & C_s
+    \end{bmatrix} = n + n_s, \quad \forall \lambda =  \mathrm{eig} \left( \begin{bmatrix}
+        A & B_2
+    \end{bmatrix} \right)
 \end{align}
-
-The prediction pushes the filtered estimate through the model and then adds the effect of the known pump flows. The last two terms of the covariance $P_{k+1|k}$ are the correction for the process noise and sensor noise when they are correlated. However, in this case the two noise terms are independent of each other, $S = 0$. This means that $K_{fw,k} = 0$, $\hat{w}_{k|k} = 0$ and $Q_{k|k} = Q$ reducing the time update to
-
-\begin{align}
-    \hat{x}_{k+1|k} = A\hat{x}_{k|k} + Bu_k, \quad P_{k+1|k} = AP_{k|k}A' + GQG'
-\end{align}
-
-The filter is initialized with the mean and covariance of the initial state, $\hat x_{0|-1}=\bar x_0=0$ and $P_{0|-1}=P_0$, with $P_0=$ [TODO].
-
-\subsection{Static Kalman Filter}
-
-The static Kalman filter uses the limit of P of the prediction covariance $P_{k+1|k}$, meaning that it assumes that $P_{k+1|k} \rightarrow P$ when $k \rightarrow \infty$. It then satisfies the discrete algebraic riccati equation
-
-\begin{align}
-    P = APA' + GQG' - (APC' + GS)(CPC'+R)^{-1}(APC' + GS)'
-\end{align}
-
-which for $S = 0$ the yields
-
-\begin{align}
-    P = APA' + GQG' - APC'(CPC'+R)^{-1}(APC' + GS)'CPA'
-\end{align}
-
-The constant gain and covariance are expressed as
-
-\begin{align}
-    R_e = CPC' + R, \quad K_{fx} = PC'R_e^{-1}, \quad P_f = P- K_{fx}R_eK'_{fx}
-\end{align}
-
-and the measurement and time updates defined for the dynamic Kalman filter are then used with these constant matrices. Since the covariances don't depend on the measured data, the $K_f$ is computed only once before the simulation.
