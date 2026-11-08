@@ -1,0 +1,791 @@
+\chapter{Unconstrained Model Predictive Control}
+\label{chap:problem8}
+
+This chapter implements the unconstrained model predictive controller (MPC)
+for the linear four-tank model. The plant is the discrete-time linear model
+derived in Problem~5 and used for the estimators in Problem~6; input and
+output constraints are not part of
+Problem~8, so the optimization is an unconstrained convex quadratic program
+with the closed-form solution $U^\star=-H^{-1}g$, which the controller obtains
+through the quadratic-programming interface from Chapter~\ref{chap:problem7}.
+For Problem~8 the variable bounds are infinite and the linear constraints are
+empty, so the interface returns the unconstrained optimum.
+The controller is written in deviation variables around the operating point
+of Problem~5 and is combined with the two estimators from Problem~6: a
+four-state filter without a disturbance state and a six-state
+disturbance-augmented filter with $\Delta F_3$ and $\Delta F_4$ bias states.
+The same constructor is also applied to the six-state identified model from
+Problem~4 as a design check.
+
+\section{Discrete-Time Model in Deviation Variables}
+\label{sec:p8-model}
+
+All signals are deviations from the operating point
+\begin{equation}
+ u_0=\begin{bmatrix}300\\300\end{bmatrix}\ \mathrm{cm^3/s},
+ \qquad
+ d_0=\begin{bmatrix}20\\20\end{bmatrix}\ \mathrm{cm^3/s},
+ \qquad
+ h_s=\begin{bmatrix}28.4621\\41.4578\\4.0950\\6.6333\end{bmatrix}\ \mathrm{cm},
+ \qquad
+ T_s=5\ \mathrm{s},
+ \label{eq:p8-operating-point}
+\end{equation}
+where $h_s$ is the steady-state level vector. The state is the vector of tank
+mass deviations, $x_k=m_k-m_s\in\mathbb{R}^4$; the manipulated input is
+$u_k=F_k-u_0\in\mathbb{R}^2$; the unmeasured inflow disturbance is
+$d_k=D_k-d_0\in\mathbb{R}^2$; and the measured and controlled outputs are the
+lower-tank level deviations $y_k=h_k^{\mathrm{meas}}-h_s$ and
+$z_k=h_k-h_s$, both in $\mathbb{R}^2$. The discrete-time model is
+\begin{align}
+ x_{k+1} &= A x_k + B u_k + G d_k, \label{eq:p8-model-state}\\
+ y_k &= C x_k + v_k, \label{eq:p8-model-meas}\\
+ z_k &= C x_k, \label{eq:p8-model-out}
+\end{align}
+with $A\in\mathbb{R}^{4\times4}$, $B\in\mathbb{R}^{4\times2}$,
+$G=E\in\mathbb{R}^{4\times2}$ and $C\in\mathbb{R}^{2\times4}$. Here $d_k$ is
+the physical inflow deviation; the estimator and the MPC use $w_k$ for the
+disturbance input and $\hat w_k$ for its estimate. The four-state filter
+treats $w_k$ as zero-mean white noise and carries no disturbance state, so
+its prediction sets $\hat w_k=0$; the six-state filter treats $w_k$ as a
+bias state and predicts with its estimate. The matrix
+$E$ is the zero-order-hold disturbance matrix from Problem~5; it distributes
+the two unmeasured flows to tanks~3 and~4. The feedthrough is zero,
+$D=0$, because the levels are not algebraically coupled to the pumps.
+The measured and controlled outputs coincide, so $C_z=C$. The matrices
+$A$, $B$ and $E$ are the same zero-order-hold matrices that were used for
+the Problem~6 filters; they are evaluated once at $T_s=5$~s.
+
+The unmeasured inflow is written as the sum of a deterministic step and a
+zero-mean white fluctuation, $d_k=d_k^{\mathrm{step}}+\eta_k$, and the
+measurement noise is $v_k$. The two sequences are independent and Gaussian,
+\begin{equation}
+ \mathbb{E}[\eta_k\eta_k^T]=\sigma_F^2 I_2,
+ \qquad
+ \mathbb{E}[v_kv_k^T]=\sigma_V^2 I_2,
+ \qquad
+ \sigma_F=5\ \mathrm{cm^3/s},\quad \sigma_V=0.5\ \mathrm{cm},
+ \label{eq:p8-noise}
+\end{equation}
+with no cross-covariance. The four-state estimator models only the
+zero-mean part $\eta_k$, while the six-state estimator adds a bias state
+$w_k$ for the slowly varying part and uses $\hat w_k$ as its estimate. This
+distinction is the reason for the different closed-loop offsets in
+Section~\ref{sec:p8-results}.
+
+\begin{table}[htbp]
+ \centering
+ \caption{MPC design parameters used in the reported run. The horizon
+ $N=20$ corresponds to $NT_s=100$~s.}
+ \label{tab:p8-design}
+ \begin{tabular}{@{}lll@{}}
+ \hline
+ Parameter & Value & Meaning\\
+ \hline
+ $T_s$ & $5$~s & sample time\\
+ $N$ & $20$ & prediction horizon\\
+ $W_z$ & $10 I_2$ & output weight\\
+ $W_u$ & $0.01 I_2$ & input weight\\
+ $W_{\Delta u}$ & $I_2$ & input-move weight\\
+ $u_0$ & $[300,300]^T$~cm$^3$/s & nominal pump flow\\
+ $d_0$ & $[20,20]^T$~cm$^3$/s & nominal disturbance flow\\
+ \hline
+ \end{tabular}
+\end{table}
+
+\section{Stacked Prediction}
+\label{sec:p8-prediction}
+
+At sample $k$, let $\hat x_k$ and $\hat w_k$ be the state and disturbance
+estimates after the measurement $y_k$ has been used. Over the horizon
+$j=1,\ldots,N$, repeated substitution in \eqref{eq:p8-model-state} gives
+\begin{equation}
+ x_{k+j|k}=A^j\hat x_k
+ +\sum_{i=1}^{j}A^{j-i}B\,u_{k+i-1}
+ +\sum_{i=1}^{j}A^{j-i}G\,\hat w_k
+ \label{eq:p8-rollout}
+\end{equation}
+for a disturbance estimate that is held constant over the horizon. Stacking
+the predicted outputs gives
+\begin{equation}
+ Z_k=\Phi_x\hat x_k+\Phi_w\hat w_k+\Gamma U_k,
+ \label{eq:p8-prediction}
+\end{equation}
+where
+\begin{equation}
+ Z_k=\begin{bmatrix}z_{k+1|k}\\ \vdots\\ z_{k+N|k}\end{bmatrix}\in\mathbb{R}^{2N},
+ \qquad
+ U_k=\begin{bmatrix}u_k\\ \vdots\\ u_{k+N-1}\end{bmatrix}\in\mathbb{R}^{2N},
+ \qquad
+ R_k=\begin{bmatrix}r_{k+1}\\ \vdots\\ r_{k+N}\end{bmatrix}\in\mathbb{R}^{2N}.
+ \label{eq:p8-stacks}
+\end{equation}
+The input-to-output matrix is block lower triangular,
+\begin{equation}
+ \Gamma=
+ \begin{bmatrix}
+  CB & 0 & \cdots & 0\\
+  CAB & CB & \ddots & \vdots\\
+  \vdots & \vdots & \ddots & 0\\
+  CA^{N-1}B & CA^{N-2}B & \cdots & CB
+ \end{bmatrix},
+ \qquad
+ [\Gamma]_{ji}=CA^{j-i}B,\quad 1\le i\le j\le N,
+ \label{eq:p8-gamma}
+\end{equation}
+and the free-response matrices are
+\begin{equation}
+ \Phi_x=\begin{bmatrix}CA\\ CA^2\\ \vdots\\ CA^N\end{bmatrix},
+ \qquad
+ \Phi_w=
+ \begin{cases}
+  \begin{bmatrix}CG\\ C(I+A)G\\ \vdots\\ C(I+\cdots+A^{N-1})G\end{bmatrix},
+  & \text{persistent},\\[10pt]
+  \begin{bmatrix}CG\\ CAG\\ \vdots\\ CA^{N-1}G\end{bmatrix},
+  & \text{impulse}.
+ \end{cases}
+ \label{eq:p8-phix-phiw}
+\end{equation}
+The persistent form holds the current estimate $\hat w_k$ constant over the
+whole horizon. This is the appropriate prediction for the bias states of the
+augmented estimator, whose future increments have zero mean. The impulse form
+lets the disturbance act for one sample only and then disappear; it is the
+prediction for a white disturbance. When the estimator has no disturbance
+state, $n_w=0$ and $\Phi_w$ is empty. In the implementation the mode is taken
+from the estimator: the four-state estimator gives $n_w=0$ and no disturbance
+term, while the six-state estimator gives $n_w=2$ and the persistent form.
+The reference is held at its current value over the horizon,
+$R_k=\mathbf{1}_N\otimes r_k$, which is exact for the step reference used
+here.
+
+\section{Objective and Unconstrained Solution}
+\label{sec:p8-objective}
+
+The objective has three quadratic terms: output tracking, input magnitude and
+input movement,
+\begin{align}
+ \phi_z&=\frac12\sum_{j=1}^{N}
+  (z_{k+j}-r_{k+j})^T W_z^T W_z (z_{k+j}-r_{k+j}),
+ \label{eq:p8-phiz}\\
+ \phi_u&=\frac12\sum_{j=0}^{N-1}
+  (u_{k+j}-u_{ss})^T W_u^T W_u (u_{k+j}-u_{ss}),
+ \label{eq:p8-phiu}\\
+ \phi_{\Delta u}&=\frac12\sum_{j=0}^{N-1}
+  \Delta u_{k+j}^T W_{\Delta u}^T W_{\Delta u}\Delta u_{k+j},
+ \qquad
+ \Delta u_{k+j}=u_{k+j}-u_{k+j-1},
+ \label{eq:p8-phidu}
+\end{align}
+with $u_{k-1}$ known. The total objective is
+$\phi=\phi_z+\phi_u+\phi_{\Delta u}$. Define the stacked weights and the
+difference operator
+\begin{equation}
+ \bar W_z=I_N\otimes W_z,
+ \qquad
+ \bar W_u=I_N\otimes W_u,
+ \qquad
+ \bar W_{\Delta u}=I_N\otimes W_{\Delta u},
+ \label{eq:p8-weights}
+\end{equation}
+\begin{equation}
+ \Lambda=
+ \begin{bmatrix}
+  I_2 & 0 & \cdots & 0\\
+  -I_2 & I_2 & \ddots & \vdots\\
+  0 & \ddots & \ddots & 0\\
+  \vdots & & -I_2 & I_2
+ \end{bmatrix}\in\mathbb{R}^{2N\times2N},
+ \qquad
+ I_0=\begin{bmatrix}I_2\\ 0_2\\ \vdots\\ 0_2\end{bmatrix}\in\mathbb{R}^{2N\times2},
+ \label{eq:p8-lambda-i0}
+\end{equation}
+so that
+\begin{equation}
+ \Lambda U_k-I_0u_{k-1}
+ =\begin{bmatrix}u_k-u_{k-1}\\ u_{k+1}-u_k\\ \vdots\\ u_{k+N-1}-u_{k+N-2}\end{bmatrix}.
+ \label{eq:p8-moves}
+\end{equation}
+With $c_k=R_k-b_k$ and $b_k=\Phi_x\hat x_k+\Phi_w\hat w_k$, the prediction is
+$Z_k-R_k=\Gamma U_k-c_k$. Expanding the three terms gives the quadratic form
+\begin{equation}
+ \phi(U_k)=\frac12U_k^THU_k+g_k^TU_k+\rho_k,
+ \label{eq:p8-quadratic}
+\end{equation}
+with
+\begin{align}
+ H&=\Gamma^T\bar W_z^T\bar W_z\Gamma
+   +\bar W_u^T\bar W_u
+   +\Lambda^T\bar W_{\Delta u}^T\bar W_{\Delta u}\Lambda,
+ \label{eq:p8-H}\\
+ g_k&=M_zc_k+M_u\bar U_k+M_{\Delta u}u_{k-1},
+ \label{eq:p8-g}\\
+ M_z&=-\Gamma^T\bar W_z^T\bar W_z,
+ \qquad
+ M_u=-\bar W_u^T\bar W_u,
+ \qquad
+ M_{\Delta u}=-\Lambda^T\bar W_{\Delta u}^T\bar W_{\Delta u}I_0,
+ \label{eq:p8-M}\\
+ \rho_k&=\frac12\Bigl(
+  c_k^T\bar W_z^T\bar W_zc_k
+  +\bar U_k^T\bar W_u^T\bar W_u\bar U_k
+  +u_{k-1}^TI_0^T\bar W_{\Delta u}^T\bar W_{\Delta u}I_0u_{k-1}
+ \Bigr),
+ \label{eq:p8-rho}
+\end{align}
+where $\bar U_k=\mathbf{1}_N\otimes u_{ss}$ is the stacked steady-state input
+target. The code stores the three matrices as \texttt{Mz}, \texttt{Mu} and
+\texttt{Mdu}. The gradient is
+\begin{equation}
+ \nabla_{U_k}\phi=HU_k+g_k.
+ \label{eq:p8-gradient}
+\end{equation}
+If $H$ is positive definite, the unique unconstrained minimizer is
+\begin{equation}
+ U_k^\star=-H^{-1}g_k.
+ \label{eq:p8-solution}
+\end{equation}
+The controller applies only the first move,
+\begin{equation}
+ u_k=\begin{bmatrix}I_{n_u}&0_{n_u\times n_u(N-1)}\end{bmatrix}U_k^\star,
+ \label{eq:p8-first-move}
+\end{equation}
+and discards the rest; at the next sample the estimate and the reference are
+updated and the problem is solved again. This is the receding-horizon
+implementation. In code, \texttt{mpc\_step} assembles the problem in the standard form of the
+Problem~7 interface,
+\begin{equation}
+ \min_x\ \frac12x^THx+g^Tx
+ \quad\text{s.t.}\quad
+ l\le x\le u,\qquad b_l\le Ax\le b_u,
+ \label{eq:p8-qp-standard}
+\end{equation}
+and calls \texttt{qpsolver(H,g,l,u,A,bl,bu,xinit)}. For Problem~8 the
+variable bounds are infinite and the linear constraints are empty,
+\begin{equation}
+ l=-\infty\,\mathbf{1}_{2N},\quad u=+\infty\,\mathbf{1}_{2N},\quad
+ A=0_{0\times2N},\quad b_l=b_u=\emptyset,
+ \label{eq:p8-qp-unconstrained}
+\end{equation}
+so \eqref{eq:p8-qp-standard} reduces to the unconstrained problem.
+\texttt{qpsolver} passes the assembled data to \texttt{quadprog}. The same
+interface carries the finite input and soft output constraints in
+Problems~9--10 without changing the controller structure; only the bounds and
+the constraint matrix change.
+
+\paragraph{Why $H$ is positive definite.}
+The first term of \eqref{eq:p8-H} is positive definite when $\Gamma$ has full
+column rank and $\bar W_z$ is nonsingular, because
+$\Gamma^T\bar W_z^T\bar W_z\Gamma\succ0$ for any nonzero $U_k$. The remaining
+two terms are positive semidefinite, and the input term is positive definite
+because $W_u=0.01I_2$. Hence $H\succ0$. Full column rank of $\Gamma$ means
+that the $n_uN$ input directions are independent over the horizon. For the
+mass model, $\Gamma\in\mathbb{R}^{40\times40}$ has rank $40$ and condition
+number $25.1$, and the resulting $H$ has eigenvalues between $0.0831$ and
+$3.979$, so the QP is strictly convex and has a unique minimizer. The
+constructor checks the rank of $\Gamma$ and rejects a rank-deficient design;
+if $H$ were only positive semidefinite, for example because all weights were
+zero in some direction, it warns and \texttt{qpsolver}/\texttt{quadprog} may
+return a non-unique minimizer. The matrix $H$ is independent of $\hat x_k$,
+$\hat w_k$ and $r_k$, so it is assembled once before the closed-loop
+simulation; the linear term $g_k$ and the QP data are updated at every
+sample.
+
+\section{Steady-State Target and Offset-Free Tracking}
+\label{sec:p8-target}
+
+For a constant reference $r$ and a constant disturbance estimate $\hat w$,
+the target state and input satisfy
+\begin{equation}
+ x_{ss}=Ax_{ss}+Bu_{ss}+G\hat w,
+ \qquad
+ r=Cx_{ss}.
+ \label{eq:p8-ss-equations}
+\end{equation}
+Eliminating $x_{ss}$ gives
+\begin{equation}
+ Mu_{ss}=r-C(I-A)^{-1}G\hat w,
+ \qquad
+ M=C(I-A)^{-1}B,
+ \label{eq:p8-target-u}
+\end{equation}
+and then
+\begin{equation}
+ x_{ss}=(I-A)^{-1}\left(Bu_{ss}+G\hat w\right).
+ \label{eq:p8-target-x}
+\end{equation}
+For the four-state estimator there is no disturbance state, so the term
+$G\hat w$ is omitted and the target is computed for $w=0$. For the mass
+model $M$ is nonsingular,
+\begin{equation}
+ M=\begin{bmatrix}0.1178&0.0589\\ 0.0948&0.1658\end{bmatrix}
+ \ \mathrm{cm/(cm^3/s)},
+ \label{eq:p8-M-numeric}
+\end{equation}
+so the target is unique. The stacked target used in
+\eqref{eq:p8-g} is
+\begin{equation}
+ \bar U_k=\mathbf{1}_N\otimes u_{ss}.
+ \label{eq:p8-ubar}
+\end{equation}
+
+\paragraph{Consistency of $\bar U_k$ with $R_k$.}
+The input target must be the steady-state input that belongs to the current
+reference and disturbance estimate. This is not an optional scaling: it is
+the condition that makes the tracking and input terms agree at the solution.
+To see this, suppose $\hat x_k=x_{ss}$ and $\hat w_k=\hat w$. Repeated
+substitution of \eqref{eq:p8-ss-equations} gives, for every horizon step
+$j$,
+\begin{equation}
+ Cx_{ss}=CA^jx_{ss}
+ +\sum_{i=1}^{j}CA^{j-i}Bu_{ss}
+ +\sum_{i=1}^{j}CA^{j-i}G\hat w.
+ \label{eq:p8-ss-stack}
+\end{equation}
+The three sums are exactly the $j$-th blocks of
+$\Phi_x x_{ss}$, $\Gamma\bar U_k$ and $\Phi_w\hat w$, so
+\begin{equation}
+ R_k=\Phi_x x_{ss}+\Phi_w\hat w+\Gamma\bar U_k
+ \quad\Longrightarrow\quad
+ c_k=R_k-b_k=\Gamma\bar U_k.
+ \label{eq:p8-consistency}
+\end{equation}
+Because a constant input has zero moves, $\Lambda\bar U_k=I_0u_{ss}$.
+Substituting \eqref{eq:p8-consistency} into \eqref{eq:p8-g} gives
+\begin{equation}
+ g_k=-\Gamma^T\bar W_z^T\bar W_z\Gamma\bar U_k
+     -\bar W_u^T\bar W_u\bar U_k
+     -\Lambda^T\bar W_{\Delta u}^T\bar W_{\Delta u}\Lambda\bar U_k
+ =-H\bar U_k,
+ \label{eq:p8-g-steady}
+\end{equation}
+and therefore $U_k^\star=\bar U_k$. The steady-state input is the exact
+unconstrained optimum, and the closed loop has no offset. If $\bar U_k$ were
+chosen inconsistently with $R_k$, for example $\bar U_k=0$ or a target
+computed for the wrong disturbance, then $c_k\ne\Gamma\bar U_k$ and the
+tracking and input terms would pull in different directions; the minimizer
+would not be the steady-state input, and the closed loop would settle at a
+different output or use unnecessary input movement. This is why
+\texttt{mpc\_step} recomputes $\bar U_k$ from \texttt{mpc\_target} at every
+sample using the current reference and $\hat w_k$, instead of storing a fixed
+input target.
+
+The distinction between the two estimators is now clear. With the four-state
+estimator, $\hat w_k$ is absent, so \eqref{eq:p8-target-u} is solved with
+$w=0$. The target is consistent with the reference under the assumed model,
+but the plant has a nonzero inflow, so the model and the plant disagree and
+an offset remains. With the six-state estimator, $\hat w_k$ is the estimated
+bias and \eqref{eq:p8-target-u} includes its effect, so the target moves with
+the disturbance estimate and the offset is removed.
+
+\section{State Estimation}
+\label{sec:p8-estimators}
+
+Both estimators are stationary Kalman filters designed with
+\texttt{problem06Filter} and adapted to the MPC interface in
+\texttt{mpc\_estimators}. The static (steady-state) gain is used, matching the
+offset-free structure of the lecture; the dynamic filter remains available
+for the Problem~6 study but is not used inside the MPC.
+
+\subsection{Four-State Unbiased Kalman Filter}
+
+The four-state filter uses the model \eqref{eq:p8-model-state} with the
+physical inflow modeled as white noise,
+$d_k=\eta_k\sim N(0,\sigma_F^2I_2)$, and
+$v_k\sim N(0,\sigma_V^2I_2)$. The steady-state prior covariance solves the
+discrete algebraic Riccati equation
+\begin{equation}
+ P=APA^T+GQG^T-APC^T(CPC^T+R)^{-1}CPA^T,
+ \qquad
+ K_{fx}=PC^T(CPC^T+R)^{-1},
+ \label{eq:p8-dare4}
+\end{equation}
+with $Q=\sigma_F^2I_2$ and $R=\sigma_V^2I_2$. The gain is constant and is
+obtained from \texttt{filter.Mx} returned by
+\texttt{problem06Filter(base,'static')}. The recursion at sample $k$ is
+\begin{align}
+ \hat x_{k|k-1}&=A\hat x_{k-1|k-1}+Bu_{k-1},
+ \label{eq:p8-kf4-pred}\\
+ e_k&=y_k-C\hat x_{k|k-1},
+ \label{eq:p8-kf4-innov}\\
+ \hat x_{k|k}&=\hat x_{k|k-1}+K_{fx}e_k.
+ \label{eq:p8-kf4-update}
+\end{align}
+There is no disturbance state: $n_w=0$ and $\hat w_k$ is empty. The
+prediction \eqref{eq:p8-kf4-pred} therefore sets the disturbance to zero,
+which is the maximum-likelihood prediction for a zero-mean white disturbance.
+The gain is approximately
+$\mathrm{diag}(19.50,20.19,10.34,12.08)$; the first and third states are
+updated by the $h_1$ measurement, and the second and fourth by the $h_2$
+measurement.
+
+\subsection{Six-State Bias-Augmented Kalman Filter}
+
+The six-state filter augments the mass states with two bias states
+$w_k=[\Delta F_{3,k},\Delta F_{4,k}]^T$ that represent the slowly varying
+part of the unmeasured inflow. The augmented state is
+$\xi_k=[x_k^T,w_k^T]^T\in\mathbb{R}^6$, and the model is
+\begin{equation}
+ \xi_{k+1}=A_a\xi_k+B_au_k+G_aw_{a,k},
+ \qquad
+ y_k=C_a\xi_k+v_k,
+ \label{eq:p8-augmented}
+\end{equation}
+with
+\begin{equation}
+ A_a=\begin{bmatrix}A&E\\ 0&I_2\end{bmatrix},
+ \qquad
+ B_a=\begin{bmatrix}B\\ 0\end{bmatrix},
+ \qquad
+ C_a=\begin{bmatrix}C&0\end{bmatrix},
+ \qquad
+ G_a=\begin{bmatrix}E&0\\ 0&I_2\end{bmatrix},
+ \qquad
+ Q_a=\begin{bmatrix}\sigma_F^2I_2&0\\ 0&\sigma_B^2I_2\end{bmatrix}.
+ \label{eq:p8-augmented-matrices}
+\end{equation}
+The bias states follow the random walk $w_{k+1}=w_k+w_{b,k}$ with
+$\mathbb{E}[w_{b,k}w_{b,k}^T]=\sigma_B^2I_2$. The bias state represents the
+slowly varying part, so the physical inflow is $d_k=w_k+\eta_k$. The first
+two columns of $G_a$ carry the white inflow noise $\eta_k$ through $E$; the
+last two carry the random-walk increments through the identity. The steady-state gain $M_x$ is
+computed from the same Riccati equation with
+$(A_a,B_a,G_a,C_a,Q_a,R)$ and split into
+\begin{equation}
+ K_{fx}=M_x(1:4,:)\in\mathbb{R}^{4\times2},
+ \qquad
+ K_{fw}=M_x(5:6,:)\in\mathbb{R}^{2\times2}.
+ \label{eq:p8-kf6-gains}
+\end{equation}
+The recursion is
+\begin{align}
+ \hat x_{k|k-1}&=A\hat x_{k-1|k-1}+Bu_{k-1}+E\hat w_{k-1},
+ \label{eq:p8-kf6-pred}\\
+ \hat w_{k|k-1}&=\hat w_{k-1},
+ \label{eq:p8-kf6-wpred}\\
+ e_k&=y_k-C\hat x_{k|k-1},
+ \label{eq:p8-kf6-innov}\\
+ \hat x_{k|k}&=\hat x_{k|k-1}+K_{fx}e_k,
+ \label{eq:p8-kf6-xupdate}\\
+ \hat w_{k|k}&=\hat w_{k-1}+K_{fw}e_k.
+ \label{eq:p8-kf6-wupdate}
+\end{align}
+The bias prior \eqref{eq:p8-kf6-wpred} is the random-walk prediction, and the
+bias update \eqref{eq:p8-kf6-wupdate} integrates the innovation. The gains
+are approximately
+\begin{equation}
+ K_{fx}=\begin{bmatrix}80.49&0\\ 0&80.17\\ 84.64&0\\ 0&100.34\end{bmatrix},
+ \qquad
+ K_{fw}=\begin{bmatrix}3.55&0\\ 0&3.55\end{bmatrix}.
+ \label{eq:p8-kf6-numeric}
+\end{equation}
+The larger state gains and the nonzero bias gains make the augmented filter
+react much more strongly to output errors than the four-state filter. The
+MPC prediction uses the bias estimate as a persistent input through $G=E$,
+i.e.\ exactly the upper block of \eqref{eq:p8-kf6-pred} with
+$\hat w$ held constant over the horizon. The white part of the inflow is
+zero mean and is not predicted.
+
+\paragraph{Terminology.}
+``Biased'' in this chapter means \emph{bias-augmented} or \emph{offset-free},
+not statistically biased. The four-state filter assumes that the disturbance
+has zero mean; the six-state filter adds two integrating states so that a
+nonzero mean inflow can be represented. Both are Kalman filters for their
+respective assumed models, and the word does not mean that the six-state
+estimation error has nonzero mean. The four-state design is called
+``unbiased'' only because it has no bias state.
+
+\section{Implementation and Function Map}
+\label{sec:p8-implementation}
+
+The workflow is
+\begin{center}
+\small
+\begin{tabular}{l}
+\texttt{run\_mpc.m}\\
+$\rightarrow$ \texttt{problem08Models}\\
+$\rightarrow$ \texttt{mpc\_estimators} (twice)
+  $\rightarrow$ \texttt{mpc\_constructors} (twice)\\
+$\rightarrow$ \texttt{problem08Simulate}\\
+$\rightarrow$ \texttt{mpc\_step} (once per sample)\\
+$\rightarrow$ \texttt{qpsolver} (Problem~7)
+  $\rightarrow$ \texttt{quadprog}\\
+$\rightarrow$ \texttt{mpc\_estimate},
+  \texttt{mpc\_target}, \texttt{mpc\_predict}\\
+$\rightarrow$ \texttt{saveExperiment}.
+\end{tabular}
+\end{center}
+The entry script sets the configuration and calls
+\texttt{problem08Simulate}; the simulation builds both controllers from the
+same model and the same reference, runs them on the same noise realization
+and computes the metrics. The entry script then writes the MAT, PNG and PDF
+artifacts with \texttt{saveExperiment}. The function map is given in
+Table~\ref{tab:p8-functions}.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Function map for the unconstrained MPC. All functions are in
+ \texttt{code/problem08} except the Problem~6 filter, the Problem~7
+ \texttt{qpsolver}, and the shared figure and export helpers.}
+ \label{tab:p8-functions}
+ \small
+ \begin{tabular}{@{}p{0.28\linewidth}p{0.66\linewidth}@{}}
+ \hline
+ Function & Role and interface\\
+ \hline
+ \texttt{mpc\_constructors}
+ & Builds $\Gamma$, $\Phi_x$, $\Phi_w$, $\bar W_z$, $\bar W_u$,
+   $\bar W_{\Delta u}$, $\Lambda$, $I_0$, $H$, $M_z$, $M_u$ and
+   $M_{\Delta u}$, checks the rank of $\Gamma$ and the definiteness of $H$,
+   and stores the QP bounds (infinite for Problem~8) and an empty constraint
+   matrix. Interface:\newline
+   \texttt{mpc = mpc\_constructors(}\newline
+   \texttt{model, config, estimator)}.\\
+ \texttt{mpc\_step}
+ & One closed-loop sample: estimates $(\hat x_k,\hat w_k)$, forms
+   $b_k$, $c_k$ and $g_k$, assembles \eqref{eq:p8-qp-standard} and calls
+   \texttt{qpsolver}, applies the first move and returns \texttt{info} with
+   $U_k$, $Z_k$, $b_k$, $c_k$, $g_k$, $\rho_k$, the QP data, the innovation
+   and the prediction. Interface:\newline
+   \texttt{[u,xhat,what,info] =}\newline
+   \texttt{mpc\_step(mpc, xhat, what,}\newline
+   \texttt{u\_prev, y, R, Ubar)}.\\
+ \texttt{qpsolver} (Problem~7)
+ & Solves \eqref{eq:p8-qp-standard} with \texttt{quadprog}. Interface:\newline
+   \texttt{[x,info] = qpsolver(H,g,l,u,A,bl,bu,xinit)}.\\
+ \texttt{mpc\_predict}
+ & Rolls out \eqref{eq:p8-rollout} over the horizon and returns
+   $X$, $Z$, $U$, the free response and $b$; it verifies
+   $Z=b+\Gamma U$ against the recursion. Interface:\newline
+   \texttt{prediction = mpc\_predict(}\newline
+   \texttt{mpc, xhat, what, U)}.\\
+ \texttt{mpc\_target}
+ & Solves \eqref{eq:p8-target-u}--\eqref{eq:p8-target-x} for a constant
+   reference and the current disturbance estimate. Interface:\newline
+   \texttt{[xss,uss] = mpc\_target(}\newline
+   \texttt{mpc, r, what)}.\\
+ \texttt{mpc\_estimators}
+ & Builds the estimator struct for \texttt{'unbiased'} (four states,
+   $n_w=0$) or \texttt{'biased'} (six states, $n_w=2$, persistent), using
+   the static gains from \texttt{problem06Filter}. Interface:\newline
+   \texttt{estimator =}\newline
+   \texttt{mpc\_estimators(kind, model, mode)}.\\
+ \texttt{mpc\_estimate}
+ & One prediction/innovation/update step
+   \eqref{eq:p8-kf4-pred}--\eqref{eq:p8-kf4-update} or
+   \eqref{eq:p8-kf6-pred}--\eqref{eq:p8-kf6-wupdate}. Interface:\newline
+   \texttt{[xhat,what,e] =}\newline
+   \texttt{mpc\_estimate(mpc, xprev,}\newline
+   \texttt{wprev, uprev, y)}.\\
+ \texttt{problem08Models}
+ & Builds the Problem~5 mass model and, when available, the six-state
+   zero-order-hold realization of the Problem~4 identified transfer
+   function. Interface: \texttt{models = problem08Models(config)}.\\
+ \texttt{problem08Simulate}
+ & Runs both controllers on the linear plant, computes RMSE, offset, maximum
+   error and effort, and creates the four figures. Interface:
+   \texttt{[result,figures] = problem08Simulate(config)}.\\
+ \texttt{run\_mpc.m}
+ & Entry script: sets $T_s$, $N$, weights, reference and disturbance steps,
+   seed and final time, calls \texttt{problem08Simulate} and
+   \texttt{saveExperiment}, and prints the metrics.\\
+ \hline
+ \end{tabular}
+\end{table}
+
+The constructor is model-agnostic: the same matrices are built for the
+four-state mass model and for the six-state identified model from Problem~4.
+The identified model is discretized at $T_s=5$~s, has zero feedthrough, and
+produces a design with $N=20$ and positive-definite $H$. That design is not
+simulated here because the Problem~6 estimators are defined for the mass
+model; it is included as a check that the framework extends to the identified
+model.
+
+\section{Results}
+\label{sec:p8-results}
+
+The reported run uses seed $8001$, $T_s=5$~s, $N=20$, and the weights in
+Table~\ref{tab:p8-design}. The reference is a step of $[1,0.5]^T$~cm at
+$t=200$~s, so the physical level reference is
+$h_s+[1,0.5]^T=[29.4621,41.9578]^T$~cm. The unmeasured inflow steps are
+$\Delta F_3=20$~cm$^3$/s at $t=300$~s and $\Delta F_4=15$~cm$^3$/s at
+$t=500$~s. The process and measurement noise are those of
+\eqref{eq:p8-noise}. Both controllers use the same noise realization, so the
+comparison is paired. The plant is the linear model
+\eqref{eq:p8-model-state}--\eqref{eq:p8-model-out}; no input or output
+constraints are imposed, and the nonlinear plant from Problem~2 is not used.
+Metrics are computed over $t\ge200$~s; the final offset is the mean error
+over the last $100$~s of the $1000$~s run. The results are collected in
+Table~\ref{tab:p8-metrics}.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Closed-loop metrics for the linear plant with seed $8001$.
+ RMSE and maximum error are over $t\ge200$~s; the offset is the mean over
+ the last $100$~s. Effort sums are over the full run, in
+ $(\mathrm{cm^3/s})^2$.}
+ \label{tab:p8-metrics}
+ \small
+ \begin{tabular}{@{}lrrrrrrr@{}}
+ \hline
+ Controller & \multicolumn{2}{c}{RMSE (cm)} & \multicolumn{2}{c}{Offset (cm)}
+ & $\max|e|$ (cm) & $\sum u_k^2$ & $\sum(\Delta u_k)^2$\\
+ & $h_1$ & $h_2$ & $h_1$ & $h_2$ & & & \\
+ \hline
+ unbiased 4-state & 1.965 & 1.197 & $+2.235$ & $+1.756$ & 2.321
+  & $12\,683$ & $200.1$\\
+ biased 6-state & 0.334 & 0.281 & $-0.221$ & $-0.101$ & 1.079
+  & $131\,513.6$ & $1\,906.6$\\
+ \hline
+ \end{tabular}
+\end{table}
+
+\subsection{Tracking and Offset}
+
+The four-state controller leaves a clear final offset of
+$+2.235$~cm in $h_1$ and $+1.756$~cm in $h_2$; the six-state controller
+reduces it to $-0.221$~cm and $-0.101$~cm. The RMSE falls from
+$1.965$/$1.197$~cm to $0.334$/$0.281$~cm, and the maximum absolute error
+from $2.321$~cm to $1.079$~cm. Figure~\ref{fig:p8-tracking} shows the same
+contrast in the time domain: the four-state response settles above the
+reference after the disturbance steps, while the six-state response returns
+to the reference band.
+
+The mechanism is confirmed by a near-deterministic check with
+$\sigma_F=\sigma_V=10^{-3}$: the four-state offset is then
+$[3.867,3.437]^T$~cm, whereas the six-state offset is
+$[-0.0006,-0.0004]^T$~cm. The four-state offset is therefore structural, not
+a noise artifact: its model has no state that can represent a nonzero mean
+inflow, so the target \eqref{eq:p8-target-u} is computed for the wrong
+disturbance. The six-state target includes the estimated bias and removes the
+offset. At the nominal noise level the residual six-state offset is small
+compared with the $0.5$~cm measurement-noise standard deviation; the
+near-deterministic result shows that it is not caused by the model structure.
+
+\subsection{Control Effort and Disturbance Estimates}
+
+The biased controller uses about ten times the input energy:
+$131\,513.6$ versus $12\,683$ in $\sum u_k^2$ (ratio $10.4$), and
+$1\,906.6$ versus $200.1$ in $\sum(\Delta u_k)^2$ (ratio $9.5$). The
+difference is visible in Figure~\ref{fig:p8-pumps}: apart from the transient
+after the reference step, the four-state pumps stay close to the nominal
+$300$~cm$^3$/s, whereas the six-state pumps make large, sustained excursions
+as the disturbance estimate
+changes the steady-state target. In particular, pump~1 falls towards
+$260$~cm$^3$/s after the first disturbance step and pump~2 rises to about
+$330$~cm$^3$/s around the second step, before both return towards their
+nominal values late in the run. This is the price of the integral action that removes the offset: the
+bias estimate changes the target, and the controller follows it.
+
+Figure~\ref{fig:p8-disturbance} shows the disturbance estimates. The final
+$100$~s means are $\hat F_3=22.63$ and $\hat F_4=17.92$~cm$^3$/s, compared
+with the true $20$ and $15$~cm$^3$/s, i.e.\ errors of $+2.63$ ($+13\%$) and
+$+2.92$ ($+19\%$). The estimates follow the two steps, but with a lag of
+tens of seconds and
+fluctuations of several $\mathrm{cm^3/s}$; the residual error is of the same
+order as the $2$~cm$^3$/s random-walk increment used to design the filter.
+The estimate is an integrating state rather than a direct flow measurement,
+so a nonzero estimate error does not by itself imply a nonzero output offset;
+the offset-free property comes from the integrator and the target
+calculation. The estimate error does, however, shift the steady-state input
+target, which is visible in the pump flows.
+
+\subsection{Horizon Prediction}
+
+Figure~\ref{fig:p8-prediction} shows the biased controller's prediction at
+$t=700$~s, after both disturbance steps. The $20$-step prediction covers
+$100$~s and is smooth; it converges to the $[1,0.5]^T$~cm reference. The
+realized trajectory departs from the prediction by a few tenths of a
+centimetre because the plant is driven by the actual noisy inflow, whereas
+the prediction holds the current bias estimate constant over the horizon.
+The prediction is the model-consistent trajectory used by the optimizer, not
+a forecast of future noise. It also shows that the controller is regulating
+towards the reference rather than reacting only to the current measurement.
+
+\begingroup
+\newcommand{\pEightFigure}[1]{%
+ \includegraphics[width=\linewidth]{tex/chapters/results/problem08/#1.pdf}}
+\begin{figure}[htbp]
+ \centering\pEightFigure{unconstrained_mpc_01}
+ \caption{Closed-loop levels for the unbiased four-state MPC (left column)
+ and the biased six-state MPC (right column). Rows are $h_1$ and $h_2$;
+ solid black is the true level, dashed blue the reference, and grey points
+ the noisy measurement. The reference steps by $[1,0.5]^T$~cm at $200$~s;
+ $F_3$ and $F_4$ step at $300$~s and $500$~s.}
+ \label{fig:p8-tracking}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pEightFigure{unconstrained_mpc_02}
+ \caption{$F_3$ and $F_4$ estimates from the biased six-state MPC (dashed)
+ compared with the true disturbance steps (solid). The estimates are the
+ persistent bias states of the augmented Kalman filter.}
+ \label{fig:p8-disturbance}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pEightFigure{unconstrained_mpc_03}
+ \caption{Physical pump flows $u_0+u$ for the two controllers. The biased
+ controller moves the pumps much more because its steady-state target is
+ recomputed from the disturbance estimate.}
+ \label{fig:p8-pumps}
+\end{figure}
+\begin{figure}[htbp]
+ \centering\pEightFigure{unconstrained_mpc_04}
+ \caption{$20$-step ($100$~s) horizon prediction of the biased MPC at
+ $t=700$~s (dashed with markers) and the realized levels (solid). The
+ prediction holds the current disturbance estimate constant; the realized
+ trajectory is driven by the actual noisy inflow.}
+ \label{fig:p8-prediction}
+\end{figure}
+\endgroup
+
+\section{Discussion of Estimator and Tuning Choices}
+\label{sec:p8-discussion}
+
+\subsection{Static Gain}
+
+Both estimators use the stationary gain from the Riccati equation rather
+than the time-varying dynamic gain. The static gain is computed once per
+estimator, keeps the estimator recursion linear and time-invariant, and
+allows the MPC matrices $H$, $M_z$, $M_u$ and $M_{\Delta u}$ to be
+precomputed once. It also matches the offset-free structure used in the
+lecture and makes the estimator recursion directly comparable with the
+static filter in Problem~6. The dynamic filter would recompute $P_k$ and $K_k$ at every
+sample; it would be advantageous only during a large covariance transient.
+Here the plant starts at the operating point, so the state estimate starts at
+zero, and the static gain is a reasonable approximation over the $1000$~s
+run. The
+price is that the controller treats $\hat w_k$ as certain and does not use
+its covariance; the bias-noise parameter is therefore a single scalar
+compromise rather than a state-dependent weighting.
+
+\subsection{Bias-Noise Tuning}
+
+The parameter $\sigma_B$ is the standard deviation of the bias random-walk
+increment per sample, and it sets the bandwidth of the disturbance estimator.
+A larger $\sigma_B$ increases $K_{fw}$, so the filter follows the
+$300$~s and $500$~s steps faster, but the estimate becomes noisier and the
+controller makes larger input moves; a smaller $\sigma_B$ gives smoother
+estimates and inputs but a slower step response and a longer offset
+transient. With $\sigma_F=5$ and $\sigma_V=0.5$, the value $\sigma_B=2$ is a
+compromise: the bias estimate is smoother than the per-sample inflow noise,
+but it still adapts within tens of seconds. The residual estimate errors
+($+2.63$ and $+2.92$~cm$^3$/s) and the residual offset
+($-0.221$ and $-0.101$~cm) reflect this trade-off, as does the roughly
+tenfold increase in control effort relative to the four-state controller.
+The value is a tuning choice, not the result of a formal optimization; a
+systematic tuning would scan $\sigma_B$ at a fixed seed and trade RMSE
+against effort. The reported comparison is a single noise realization, so
+the metrics are paired between the two controllers but are not averaged over
+seeds, and no confidence intervals are claimed.
+
+\subsection{Limitations}
+
+The experiment uses the linear plant, so it isolates the effect of the
+estimator and the target calculation; it does not test the nonlinear model,
+input saturation or output constraints. The four-state controller is not a
+badly tuned version of the six-state controller: it is the correct
+unconstrained MPC for a model without a disturbance state, and its offset is
+the expected consequence of that model choice. The six-state controller
+removes the offset but pays for it with larger input movement and a noisy
+disturbance estimate. Extending the framework to input and output
+constraints would require the quadratic program of Problem~7 and is outside
+the scope of Problem~8.
