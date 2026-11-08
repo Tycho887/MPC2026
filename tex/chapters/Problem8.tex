@@ -328,40 +328,40 @@ so the target is unique. The stacked target used in
  \label{eq:p8-ubar}
 \end{equation}
 
-\paragraph{Consistency of $\bar U_k$ with $R_k$.}
-The input target must be the steady-state input that belongs to the current
-reference and disturbance estimate. This is not an optional scaling: it is
-the condition that makes the tracking and input terms agree at the solution.
-To see this, suppose $\hat x_k=x_{ss}$ and $\hat w_k=\hat w$. Repeated
-substitution of \eqref{eq:p8-ss-equations} gives, for every horizon step
-$j$,
-\begin{equation}
- Cx_{ss}=CA^jx_{ss}
- +\sum_{i=1}^{j}CA^{j-i}Bu_{ss}
- +\sum_{i=1}^{j}CA^{j-i}G\hat w.
- \label{eq:p8-ss-stack}
-\end{equation}
-The three sums are exactly the $j$-th blocks of
-$\Phi_x x_{ss}$, $\Gamma\bar U_k$ and $\Phi_w\hat w$, so
-\begin{equation}
- R_k=\Phi_x x_{ss}+\Phi_w\hat w+\Gamma\bar U_k
- \quad\Longrightarrow\quad
- c_k=R_k-b_k=\Gamma\bar U_k.
- \label{eq:p8-consistency}
-\end{equation}
-Because a constant input has zero moves, $\Lambda\bar U_k=I_0u_{ss}$.
-Substituting \eqref{eq:p8-consistency} into \eqref{eq:p8-g} gives
-\begin{equation}
- g_k=-\Gamma^T\bar W_z^T\bar W_z\Gamma\bar U_k
-     -\bar W_u^T\bar W_u\bar U_k
-     -\Lambda^T\bar W_{\Delta u}^T\bar W_{\Delta u}\Lambda\bar U_k
- =-H\bar U_k,
- \label{eq:p8-g-steady}
-\end{equation}
-and therefore $U_k^\star=\bar U_k$. The steady-state input is the exact
-unconstrained optimum, and the closed loop has no offset. If $\bar U_k$ were
-chosen inconsistently with $R_k$, for example $\bar U_k=0$ or a target
-computed for the wrong disturbance, then $c_k\ne\Gamma\bar U_k$ and the
+%\paragraph{Consistency of $\bar U_k$ with $R_k$.}
+%The input target must be the steady-state input that belongs to the current
+%reference and disturbance estimate. This is not an optional scaling: it is
+%the condition that makes the tracking and input terms agree at the solution.
+%To see this, suppose $\hat x_k=x_{ss}$ and $\hat w_k=\hat w$. Repeated
+%substitution of \eqref{eq:p8-ss-equations} gives, for every horizon step
+%$j$,
+%\begin{equation}
+% Cx_{ss}=CA^jx_{ss}
+% +\sum_{i=1}^{j}CA^{j-i}Bu_{ss}
+% +\sum_{i=1}^{j}CA^{j-i}G\hat w.
+% \label{eq:p8-ss-stack}
+%\end{equation}
+%he three sums are exactly the $j$-th blocks of
+%$\Phi_x x_{ss}$, $\Gamma\bar U_k$ and $\Phi_w\hat w$, so
+%\begin{equation}
+% R_k=\Phi_x x_{ss}+\Phi_w\hat w+\Gamma\bar U_k
+ %\quad\Longrightarrow\quad
+ %c_k=R_k-b_k=\Gamma\bar U_k.
+ %\label{eq:p8-consistency}
+%\end{equation}
+%Because a constant input has zero moves, $\Lambda\bar U_k=I_0u_{ss}$.
+%Substituting \eqref{eq:p8-consistency} into \eqref{eq:p8-g} gives
+%\begin{equation}
+% g_k=-\Gamma^T\bar W_z^T\bar W_z\Gamma\bar U_k
+%     -\bar W_u^T\bar W_u\bar U_k
+%     -\Lambda^T\bar W_{\Delta u}^T\bar W_{\Delta u}\Lambda\bar U_k
+% =-H\bar U_k,
+% \label{eq:p8-g-steady}
+%\end{equation}
+%and therefore $U_k^\star=\bar U_k$. The steady-state input is the exact
+%unconstrained optimum, and the closed loop has no offset. If $\bar U_k$ were
+%chosen inconsistently with $R_k$, for example $\bar U_k=0$ or a target
+%computed for the wrong disturbance, then $c_k\ne\Gamma\bar U_k$ and the
 tracking and input terms would pull in different directions; the minimizer
 would not be the steady-state input, and the closed loop would settle at a
 different output or use unnecessary input movement. This is why
@@ -384,7 +384,7 @@ Both estimators are stationary Kalman filters designed with
 \texttt{problem06Filter} and adapted to the MPC interface in
 \texttt{mpc\_estimators}. The static (steady-state) gain is used, matching the
 offset-free structure of the lecture; the dynamic filter remains available
-for the Problem~6 study but is not used inside the MPC.
+for Problem~6 but is not used inside the MPC.
 
 \subsection{Four-State Unbiased Kalman Filter}
 
